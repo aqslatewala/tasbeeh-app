@@ -39,9 +39,22 @@
             display: none;
         }
 
-        /* Smooth transition for list changes */
         .preset-item {
             transition: all 0.2s ease;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        .tutorial-highlight::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border: 2px solid #10b981;
+            border-radius: inherit;
+            animation: pulse-ring 1.5s infinite;
         }
     </style>
 </head>
@@ -56,9 +69,15 @@
                 </div>
                 <h1 class="font-semibold text-lg tracking-tight">Tasbeeh Counter</h1>
             </div>
-            <div id="userBadge" class="text-[10px] bg-emerald-500/20 px-2 py-1 rounded-full text-emerald-400 font-bold hidden border border-emerald-500/30 cursor-pointer hover:bg-emerald-500/30 transition-colors flex items-center gap-1">
-                <span id="badgeName"></span>
-                <i data-lucide="user-round-pen" class="w-3 h-3"></i>
+            <div class="flex items-center gap-2">
+                <!-- Restart Tutorial Button -->
+                <button id="helpBtn" title="Show Tutorial" class="p-2 text-slate-500 hover:text-emerald-400 transition-colors">
+                    <i data-lucide="help-circle" class="w-5 h-5"></i>
+                </button>
+                <div id="userBadge" class="text-[10px] bg-emerald-500/20 px-2 py-1 rounded-full text-emerald-400 font-bold hidden border border-emerald-500/30 cursor-pointer hover:bg-emerald-500/30 transition-colors flex items-center gap-1">
+                    <span id="badgeName"></span>
+                    <i data-lucide="user-round-pen" class="w-3 h-3"></i>
+                </div>
             </div>
         </div>
 
@@ -112,6 +131,21 @@
         </div>
     </main>
 
+    <!-- Tutorial Overlay -->
+    <div id="tutorialOverlay" class="fixed inset-0 bg-black/90 z-[100] hidden flex items-center justify-center p-6 backdrop-blur-md">
+        <div class="max-w-xs w-full text-center">
+            <div id="tutorialIcon" class="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-400">
+                <i data-lucide="info" class="w-8 h-8"></i>
+            </div>
+            <h3 id="tutorialTitle" class="text-2xl font-bold mb-4">Welcome</h3>
+            <div id="tutorialTextContainer" class="min-h-[80px]">
+                <p id="tutorialText" class="text-slate-400 mb-8 leading-relaxed">Let's walk through how to use your new Tasbeeh counter.</p>
+            </div>
+            <button id="tutorialNext" class="w-full bg-emerald-600 hover:bg-emerald-500 py-4 rounded-2xl font-bold transition-all">Next</button>
+            <button id="tutorialSkip" class="mt-4 text-slate-500 text-sm hover:text-white transition-colors">Skip Tutorial</button>
+        </div>
+    </div>
+
     <!-- Main Modal Overlay -->
     <div id="modalOverlay" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-4">
         <div class="bg-slate-900 w-full max-w-md rounded-3xl p-6 shadow-2xl border border-white/10">
@@ -155,7 +189,7 @@
     </div>
 
     <!-- Confirm Modal -->
-    <div id="confirmModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-6">
+    <div id="confirmModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-70 hidden flex items-center justify-center p-6">
         <div class="bg-slate-900 w-full max-w-xs rounded-3xl p-6 border border-white/10 text-center">
             <h3 id="confirmTitle" class="text-lg font-bold mb-2">Reset Counter?</h3>
             <p id="confirmText" class="text-slate-400 text-sm mb-6">This action cannot be undone.</p>
@@ -187,7 +221,9 @@
             userName: "", 
             history: [],
             presets: [...DEFAULT_PRESETS],
-            isEditingPresets: false
+            isEditingPresets: false,
+            tutorialStep: 0,
+            tutorialCompleted: false
         };
 
         // UI Helpers
@@ -200,26 +236,29 @@
         const userBadge = document.getElementById('userBadge');
         const badgeName = document.getElementById('badgeName');
         const labelContainer = document.getElementById('labelContainer');
+        const helpBtn = document.getElementById('helpBtn');
         
         // Modals
         const mainModal = document.getElementById('modalOverlay');
         const nameModal = document.getElementById('nameModal');
         const confirmModal = document.getElementById('confirmModal');
         const editTasbeehModal = document.getElementById('editTasbeehModal');
+        const tutorialOverlay = document.getElementById('tutorialOverlay');
 
         function saveData() {
-            localStorage.setItem('tasbeeh_state_v2', JSON.stringify({
+            localStorage.setItem('tasbeeh_state_v3', JSON.stringify({
                 count: state.count,
                 target: state.target,
                 label: state.label,
                 userName: state.userName,
-                presets: state.presets
+                presets: state.presets,
+                tutorialCompleted: state.tutorialCompleted
             }));
             localStorage.setItem('tasbeeh_history', JSON.stringify(state.history));
         }
 
         function loadData() {
-            const savedState = localStorage.getItem('tasbeeh_state_v2');
+            const savedState = localStorage.getItem('tasbeeh_state_v3');
             const savedHistory = localStorage.getItem('tasbeeh_history');
             
             if (savedState) {
@@ -229,9 +268,16 @@
                 state.label = parsed.label || "Ya Allah";
                 state.userName = parsed.userName || "";
                 state.presets = parsed.presets || [...DEFAULT_PRESETS];
+                state.tutorialCompleted = parsed.tutorialCompleted || false;
             }
+
             if (savedHistory) {
                 state.history = JSON.parse(savedHistory);
+            }
+
+            // Auto-trigger tutorial only once
+            if (!state.tutorialCompleted) {
+                setTimeout(() => startTutorial(), 800);
             }
         }
 
@@ -263,6 +309,87 @@
             if (state.count % 100 === 0 || state.count === state.target) triggerHaptic();
             updateUI();
             saveData();
+        }
+
+        // Tutorial Logic
+        const tutorialSteps = [
+            {
+                title: "Tap to Count",
+                text: "The entire screen is your button. Tap anywhere in the center to increment the count.",
+                icon: "hand-tap",
+                highlight: "tapArea"
+            },
+            {
+                title: "Change Label",
+                text: "Tap the label above the counter to set a custom name and target for your current session.",
+                icon: "pencil",
+                highlight: "labelContainer"
+            },
+            {
+                title: "Quick Presets",
+                text: "Use the Presets button to quickly switch between common recitations or manage your list.",
+                icon: "list-music",
+                highlight: "presetBtn"
+            },
+            {
+                title: "Manage Presets",
+                text: "Inside the Presets menu, tap the Settings icon (top right) to add new custom presets or delete existing ones.",
+                icon: "settings-2",
+                highlight: "presetBtn"
+            },
+            {
+                title: "Save History",
+                text: "When you're done, tap 'Save' to tag your session with a name and store it in your history.",
+                icon: "save",
+                highlight: "finishBtn"
+            }
+        ];
+
+        function startTutorial() {
+            state.tutorialStep = 0;
+            tutorialOverlay.classList.remove('hidden');
+            showTutorialStep();
+        }
+
+        function showTutorialStep() {
+            const step = tutorialSteps[state.tutorialStep];
+            document.getElementById('tutorialTitle').innerText = step.title;
+            document.getElementById('tutorialText').innerText = step.text;
+            document.getElementById('tutorialIcon').innerHTML = `<i data-lucide="${step.icon}" class="w-8 h-8"></i>`;
+            
+            document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
+            
+            const targetEl = document.getElementById(step.highlight);
+            if (targetEl) targetEl.classList.add('tutorial-highlight');
+            
+            document.getElementById('tutorialNext').innerText = state.tutorialStep === tutorialSteps.length - 1 ? "Get Started" : "Next";
+            lucide.createIcons();
+        }
+
+        document.getElementById('tutorialNext').onclick = () => {
+            if (state.tutorialStep < tutorialSteps.length - 1) {
+                state.tutorialStep++;
+                showTutorialStep();
+            } else {
+                closeTutorial(true);
+            }
+        };
+
+        document.getElementById('tutorialSkip').onclick = () => closeTutorial(true);
+        
+        // Manual Tutorial Trigger
+        helpBtn.onclick = (e) => {
+            e.stopPropagation();
+            startTutorial();
+        };
+
+        function closeTutorial(markAsCompleted = false) {
+            tutorialOverlay.classList.add('hidden');
+            document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
+            if (markAsCompleted) {
+                state.tutorialCompleted = true;
+                saveData();
+            }
         }
 
         function openConfirm(title, text, actionLabel, onConfirm) {
@@ -333,14 +460,12 @@
                 }
 
                 if (!state.isEditingPresets) {
-                    // Custom Trigger
                     const customBtn = document.createElement('button');
                     customBtn.className = 'w-full text-left p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex justify-between items-center mb-4';
                     customBtn.innerHTML = `<div><div class="font-bold text-emerald-400">Custom Tasbeeh</div><div class="text-xs text-emerald-400/60">One-time name & target</div></div><i data-lucide="plus" class="w-4 h-4 text-emerald-400"></i>`;
                     customBtn.onclick = () => { mainModal.classList.add('hidden'); openEditTasbeeh('custom'); };
                     content.appendChild(customBtn);
                 } else {
-                    // Add to Preset List
                     const addBtn = document.createElement('button');
                     addBtn.className = 'w-full text-center p-3 border border-dashed border-emerald-500/40 text-emerald-400 rounded-xl mb-4 text-xs font-bold hover:bg-emerald-500/5 transition-colors';
                     addBtn.innerText = "+ Add New Preset";
@@ -386,18 +511,6 @@
 
                     content.appendChild(btn);
                 });
-
-                if (state.isEditingPresets) {
-                    const resetPresets = document.createElement('button');
-                    resetPresets.className = 'w-full text-slate-500 text-[10px] uppercase font-bold tracking-widest mt-8 hover:text-white transition-colors';
-                    resetPresets.innerText = "Reset to Default Presets";
-                    resetPresets.onclick = () => {
-                        state.presets = [...DEFAULT_PRESETS];
-                        saveData();
-                        openModal('presets');
-                    };
-                    content.appendChild(resetPresets);
-                }
             } else {
                 document.getElementById('modalTitle').innerText = "History";
                 editBtn.classList.add('hidden');
@@ -428,14 +541,12 @@
             lucide.createIcons();
         }
 
-        let editMode = 'custom'; // 'custom' or 'preset'
+        let editMode = 'custom'; 
         function openEditTasbeeh(mode = 'custom') {
             editMode = mode;
             document.getElementById('editTasbeehTitle').innerText = mode === 'custom' ? "Custom Tasbeeh" : "Add New Preset";
-            document.getElementById('editTasbeehSubtitle').innerText = mode === 'custom' ? "One-time name & target." : "This will be saved to your preset list.";
             document.getElementById('tasbeehNameInput').value = mode === 'custom' ? state.label : "";
             document.getElementById('tasbeehTargetInput').value = mode === 'custom' ? state.target : 1000;
-            document.getElementById('saveTasbeehBtn').innerText = mode === 'custom' ? "Update Counter" : "Add to Presets";
             editTasbeehModal.classList.remove('hidden');
         }
 
@@ -450,7 +561,6 @@
                 updateUI();
                 saveData();
                 mainModal.classList.add('hidden');
-                showToast(`Resumed for ${state.userName || 'Guest'}`);
             }
         };
 
@@ -460,7 +570,6 @@
             openModal('history');
         };
 
-        // Events
         document.getElementById('saveNameBtn').onclick = () => {
             const input = document.getElementById('nameInput');
             const name = input.value.trim() || "Guest";
@@ -483,11 +592,8 @@
                 state.count = 0;
                 state.userName = "";
                 updateUI();
-                showToast("Counter Updated");
             } else {
                 state.presets.push({ label, target });
-                showToast("Preset Added");
-                // Switch to preset view to see new addition
                 setTimeout(() => openModal('presets'), 100);
             }
 
@@ -501,7 +607,7 @@
         };
 
         document.getElementById('resetBtn').onclick = () => {
-            openConfirm("Reset Counter?", "Clear current progress? This will start a new session.", "Reset", () => {
+            openConfirm("Reset Counter?", "Clear current progress?", "Reset", () => {
                 state.count = 0;
                 state.userName = ""; 
                 updateUI();
@@ -530,7 +636,6 @@
         
         tapArea.onpointerdown = increment;
 
-        // Init
         loadData();
         updateUI();
         lucide.createIcons();
