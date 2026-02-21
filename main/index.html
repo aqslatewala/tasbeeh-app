@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Abdulqadir Slatewala Tasbeeh Counter</title>
+    <!-- PWA / Home Screen Meta -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Tasbeeh">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -107,7 +112,6 @@
             animation: pulse-ring 1.5s infinite;
         }
 
-        /* Modal Base styling for all popups to ensure high z-index */
         .modal-base {
             position: fixed;
             inset: 0;
@@ -137,6 +141,11 @@
                 <h1 class="font-semibold text-lg tracking-tight">Tasbeeh Counter</h1>
             </div>
             <div class="flex items-center gap-2">
+                <!-- Shortcut Button -->
+                <button id="shortcutBtn" class="bg-primary-fade text-primary px-3 py-1.5 rounded-full text-[11px] font-bold border border-primary-fade flex items-center gap-1.5 hover:bg-primary-fade/20 transition-all">
+                    <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                    Add Shortcut
+                </button>
                 <!-- Theme Switcher -->
                 <button id="themeBtn" title="Change Color" class="p-2 text-slate-400 hover:text-primary transition-colors">
                     <i data-lucide="palette" class="w-5 h-5"></i>
@@ -200,6 +209,44 @@
             </div>
         </div>
     </main>
+
+    <!-- Shortcut Instruction Modal -->
+    <div id="shortcutModal" class="modal-base hidden">
+        <div class="bg-slate-900 w-full max-w-sm rounded-3xl p-8 border border-primary-fade shadow-2xl relative">
+            <button id="closeShortcut" class="absolute top-4 right-4 text-slate-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            
+            <div class="w-16 h-16 bg-primary-fade rounded-2xl flex items-center justify-center mx-auto mb-6 text-primary">
+                <i data-lucide="smartphone" class="w-8 h-8"></i>
+            </div>
+            
+            <h3 class="text-xl font-bold text-center mb-2">Add to Home Screen</h3>
+            <p class="text-slate-400 text-sm text-center mb-6">Access your Tasbeeh counter instantly from your phone's home screen.</p>
+            
+            <div id="iosInstructions" class="space-y-4 hidden">
+                <div class="flex items-start gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                    <div class="bg-blue-500/20 p-2 rounded-lg text-blue-400"><i data-lucide="share" class="w-5 h-5"></i></div>
+                    <p class="text-sm">Tap the <span class="font-bold text-white">Share</span> button in Safari's toolbar.</p>
+                </div>
+                <div class="flex items-start gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                    <div class="bg-green-500/20 p-2 rounded-lg text-green-400"><i data-lucide="plus-square" class="w-5 h-5"></i></div>
+                    <p class="text-sm">Scroll down and select <span class="font-bold text-white">"Add to Home Screen"</span>.</p>
+                </div>
+            </div>
+
+            <div id="androidInstructions" class="space-y-4 hidden">
+                <div class="flex items-start gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                    <div class="bg-slate-500/20 p-2 rounded-lg text-slate-400"><i data-lucide="more-vertical" class="w-5 h-5"></i></div>
+                    <p class="text-sm">Tap the <span class="font-bold text-white">Menu</span> (three dots) in Chrome.</p>
+                </div>
+                <div class="flex items-start gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                    <div class="bg-primary-fade p-2 rounded-lg text-primary"><i data-lucide="download" class="w-5 h-5"></i></div>
+                    <p class="text-sm">Tap <span class="font-bold text-white">"Install App"</span> or <span class="font-bold text-white">"Add to Home screen"</span>.</p>
+                </div>
+            </div>
+
+            <button id="gotItBtn" class="w-full bg-primary text-slate-950 font-bold py-4 rounded-xl mt-6 hover:opacity-90 transition-all">Got it!</button>
+        </div>
+    </div>
 
     <!-- Tutorial Overlay -->
     <div id="tutorialOverlay" class="modal-base hidden flex-col">
@@ -318,6 +365,7 @@
         const helpBtn = document.getElementById('helpBtn');
         const themeBtn = document.getElementById('themeBtn');
         const appBody = document.getElementById('appBody');
+        const shortcutBtn = document.getElementById('shortcutBtn');
         
         // Modals
         const mainModal = document.getElementById('modalOverlay');
@@ -325,6 +373,7 @@
         const confirmModal = document.getElementById('confirmModal');
         const editTasbeehModal = document.getElementById('editTasbeehModal');
         const tutorialOverlay = document.getElementById('tutorialOverlay');
+        const shortcutModal = document.getElementById('shortcutModal');
 
         function saveData() {
             localStorage.setItem('tasbeeh_state_v4', JSON.stringify({
@@ -399,6 +448,7 @@
                    !nameModal.classList.contains('hidden') || 
                    !confirmModal.classList.contains('hidden') || 
                    !editTasbeehModal.classList.contains('hidden') || 
+                   !shortcutModal.classList.contains('hidden') ||
                    !tutorialOverlay.classList.contains('hidden');
         }
 
@@ -411,7 +461,7 @@
             saveData();
         }
 
-        // Tutorial Steps
+        // Restored Detailed Tutorial Steps
         const tutorialSteps = [
             {
                 title: "Tap to Count",
@@ -426,16 +476,16 @@
                 highlight: "themeBtn"
             },
             {
+                title: "Add Shortcut",
+                text: "Save this counter as an app on your phone for quick, full-screen access anytime.",
+                icon: "plus-circle",
+                highlight: "shortcutBtn"
+            },
+            {
                 title: "Change Label",
                 text: "Tap the label above the counter to set a custom name and target for your current session.",
                 icon: "pencil",
                 highlight: "labelContainer"
-            },
-            {
-                title: "Manage Presets",
-                text: "Inside the Presets menu, tap Settings to add new custom recitations or delete old ones.",
-                icon: "settings-2",
-                highlight: "presetBtn"
             },
             {
                 title: "Save History",
@@ -486,6 +536,18 @@
                 saveData();
             }
         }
+
+        // Shortcut Logic
+        shortcutBtn.onclick = (e) => {
+            e.stopPropagation();
+            const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            document.getElementById('iosInstructions').classList.toggle('hidden', !isiOS);
+            document.getElementById('androidInstructions').classList.toggle('hidden', isiOS);
+            shortcutModal.classList.remove('hidden');
+            lucide.createIcons();
+        };
+        document.getElementById('closeShortcut').onclick = () => shortcutModal.classList.add('hidden');
+        document.getElementById('gotItBtn').onclick = () => shortcutModal.classList.add('hidden');
 
         function openConfirm(title, text, actionLabel, onConfirm) {
             document.getElementById('confirmTitle').innerText = title;
