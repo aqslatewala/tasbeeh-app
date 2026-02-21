@@ -38,6 +38,11 @@
         #modalContent::-webkit-scrollbar {
             display: none;
         }
+
+        /* Smooth transition for list changes */
+        .preset-item {
+            transition: all 0.2s ease;
+        }
     </style>
 </head>
 <body class="bg-slate-950 text-white min-h-screen overflow-hidden flex flex-col">
@@ -85,7 +90,11 @@
         </div>
 
         <div class="text-center z-10 pointer-events-none flex flex-col items-center gap-2">
-            <span id="labelDisplay" class="text-emerald-400 text-sm font-semibold tracking-widest uppercase block">Ya Allah</span>
+            <div id="labelContainer" class="pointer-events-auto cursor-pointer group flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/5 hover:border-emerald-500/50 transition-all">
+                <span id="labelDisplay" class="text-emerald-400 text-sm font-semibold tracking-widest uppercase block">Ya Allah</span>
+                <i data-lucide="pencil" class="w-3 h-3 text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+            </div>
+            
             <h2 id="counterDisplay" class="text-8xl md:text-9xl font-extrabold counter-glow leading-none">0</h2>
             
             <div class="flex flex-col items-center gap-3">
@@ -108,9 +117,30 @@
         <div class="bg-slate-900 w-full max-w-md rounded-3xl p-6 shadow-2xl border border-white/10">
             <div class="flex justify-between items-center mb-6">
                 <h3 id="modalTitle" class="text-xl font-bold">Presets</h3>
-                <button id="closeModal" class="p-2 bg-white/5 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <div class="flex gap-2">
+                    <button id="editPresetsBtn" class="p-2 bg-white/5 rounded-full text-slate-400 hover:text-white transition-colors">
+                        <i data-lucide="settings-2" class="w-5 h-5"></i>
+                    </button>
+                    <button id="closeModal" class="p-2 bg-white/5 rounded-full text-slate-400 hover:text-white transition-colors">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
             </div>
             <div id="modalContent" class="space-y-3 max-h-[60vh] overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- Edit Tasbeeh Modal -->
+    <div id="editTasbeehModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] hidden flex items-center justify-center p-6">
+        <div class="bg-slate-900 w-full max-w-sm rounded-3xl p-8 border border-emerald-500/30 shadow-2xl">
+            <h3 id="editTasbeehTitle" class="text-2xl font-bold text-center mb-2 text-emerald-400">Tasbeeh Details</h3>
+            <p id="editTasbeehSubtitle" class="text-slate-400 text-sm text-center mb-6">Set your name and target.</p>
+            <input type="text" id="tasbeehNameInput" placeholder="e.g. SubhanAllah" class="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-4 text-white focus:border-emerald-500 outline-none transition-all text-center mb-4">
+            <div class="mb-4">
+                <label class="text-[10px] text-slate-500 uppercase tracking-widest block mb-2 text-center">Set Target</label>
+                <input type="number" id="tasbeehTargetInput" placeholder="1000" class="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-emerald-500 outline-none transition-all text-center">
+            </div>
+            <button id="saveTasbeehBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl transition-all">Update Counter</button>
         </div>
     </div>
 
@@ -140,15 +170,7 @@
 
     <script>
         // State
-        let state = {
-            count: 0,
-            target: 1000,
-            label: "Ya Allah",
-            userName: "", // This tracks the CURRENT session name
-            history: []
-        };
-
-        const presets = [
+        const DEFAULT_PRESETS = [
             { label: "Ya Allah", target: 1000 },
             { label: "Ya Mohammed", target: 1000 },
             { label: "Ya Ali", target: 1000 },
@@ -157,6 +179,16 @@
             { label: "Ya Hussain", target: 1000 },
             { label: "Astagfirullah", target: 1000 }
         ];
+
+        let state = {
+            count: 0,
+            target: 1000,
+            label: "Ya Allah",
+            userName: "", 
+            history: [],
+            presets: [...DEFAULT_PRESETS],
+            isEditingPresets: false
+        };
 
         // UI Helpers
         const counterDisplay = document.getElementById('counterDisplay');
@@ -167,24 +199,27 @@
         const flash = document.getElementById('vibrationFlash');
         const userBadge = document.getElementById('userBadge');
         const badgeName = document.getElementById('badgeName');
+        const labelContainer = document.getElementById('labelContainer');
         
         // Modals
         const mainModal = document.getElementById('modalOverlay');
         const nameModal = document.getElementById('nameModal');
         const confirmModal = document.getElementById('confirmModal');
+        const editTasbeehModal = document.getElementById('editTasbeehModal');
 
         function saveData() {
-            localStorage.setItem('tasbeeh_state', JSON.stringify({
+            localStorage.setItem('tasbeeh_state_v2', JSON.stringify({
                 count: state.count,
                 target: state.target,
                 label: state.label,
-                userName: state.userName
+                userName: state.userName,
+                presets: state.presets
             }));
             localStorage.setItem('tasbeeh_history', JSON.stringify(state.history));
         }
 
         function loadData() {
-            const savedState = localStorage.getItem('tasbeeh_state');
+            const savedState = localStorage.getItem('tasbeeh_state_v2');
             const savedHistory = localStorage.getItem('tasbeeh_history');
             
             if (savedState) {
@@ -193,6 +228,7 @@
                 state.target = parsed.target || 1000;
                 state.label = parsed.label || "Ya Allah";
                 state.userName = parsed.userName || "";
+                state.presets = parsed.presets || [...DEFAULT_PRESETS];
             }
             if (savedHistory) {
                 state.history = JSON.parse(savedHistory);
@@ -222,10 +258,7 @@
         }
 
         function increment(e) {
-            if (e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
+            if (e) { e.preventDefault(); e.stopPropagation(); }
             state.count++;
             if (state.count % 100 === 0 || state.count === state.target) triggerHaptic();
             updateUI();
@@ -246,15 +279,11 @@
 
         function startSaveFlow() {
             if (state.count === 0) return;
-
-            // NEW LOGIC: Always ask for name IF current session has no name.
-            // If it was continued from history, it will have a state.userName already.
             if (!state.userName) {
                 document.getElementById('nameInput').value = "";
                 nameModal.classList.remove('hidden');
                 return;
             }
-
             saveSession();
         }
 
@@ -269,7 +298,7 @@
             };
             state.history.unshift(session);
             state.count = 0;
-            state.userName = ""; // Reset current user name for the next new session
+            state.userName = ""; 
             updateUI();
             saveData();
             showToast(`Saved for ${session.userName}`);
@@ -286,29 +315,94 @@
         function openModal(type) {
             mainModal.classList.remove('hidden');
             const content = document.getElementById('modalContent');
+            const editBtn = document.getElementById('editPresetsBtn');
             content.innerHTML = '';
             
             if (type === 'presets') {
-                document.getElementById('modalTitle').innerText = "Select Tasbeeh";
-                presets.forEach(p => {
-                    const btn = document.createElement('button');
-                    btn.className = 'w-full text-left p-4 glass rounded-xl flex justify-between items-center';
-                    btn.innerHTML = `<div><div class="font-bold">${p.label}</div><div class="text-xs text-slate-400">Target: ${p.target}</div></div><i data-lucide="chevron-right" class="w-4 h-4"></i>`;
-                    btn.onclick = () => {
-                        state.label = p.label;
-                        state.target = p.target;
-                        state.count = 0;
-                        state.userName = ""; // Start fresh name flow for new preset
-                        updateUI();
-                        saveData();
-                        mainModal.classList.add('hidden');
-                    };
+                document.getElementById('modalTitle').innerText = state.isEditingPresets ? "Edit Presets" : "Select Tasbeeh";
+                editBtn.classList.remove('hidden');
+                
+                if (state.isEditingPresets) {
+                    editBtn.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i>';
+                    editBtn.classList.add('bg-emerald-500', 'text-slate-950');
+                    editBtn.classList.remove('bg-white/5', 'text-slate-400');
+                } else {
+                    editBtn.innerHTML = '<i data-lucide="settings-2" class="w-5 h-5"></i>';
+                    editBtn.classList.remove('bg-emerald-500', 'text-slate-950');
+                    editBtn.classList.add('bg-white/5', 'text-slate-400');
+                }
+
+                if (!state.isEditingPresets) {
+                    // Custom Trigger
+                    const customBtn = document.createElement('button');
+                    customBtn.className = 'w-full text-left p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex justify-between items-center mb-4';
+                    customBtn.innerHTML = `<div><div class="font-bold text-emerald-400">Custom Tasbeeh</div><div class="text-xs text-emerald-400/60">One-time name & target</div></div><i data-lucide="plus" class="w-4 h-4 text-emerald-400"></i>`;
+                    customBtn.onclick = () => { mainModal.classList.add('hidden'); openEditTasbeeh('custom'); };
+                    content.appendChild(customBtn);
+                } else {
+                    // Add to Preset List
+                    const addBtn = document.createElement('button');
+                    addBtn.className = 'w-full text-center p-3 border border-dashed border-emerald-500/40 text-emerald-400 rounded-xl mb-4 text-xs font-bold hover:bg-emerald-500/5 transition-colors';
+                    addBtn.innerText = "+ Add New Preset";
+                    addBtn.onclick = () => { mainModal.classList.add('hidden'); openEditTasbeeh('preset'); };
+                    content.appendChild(addBtn);
+                }
+
+                state.presets.forEach((p, idx) => {
+                    const btn = document.createElement('div');
+                    btn.className = 'preset-item w-full flex gap-2 items-center';
+                    
+                    const inner = document.createElement('button');
+                    inner.className = `flex-grow text-left p-4 glass rounded-xl flex justify-between items-center ${state.isEditingPresets ? 'opacity-50 cursor-default' : 'hover:bg-white/10'}`;
+                    inner.innerHTML = `<div><div class="font-bold">${p.label}</div><div class="text-xs text-slate-400">Target: ${p.target}</div></div>`;
+                    
+                    if (!state.isEditingPresets) {
+                        inner.onclick = () => {
+                            state.label = p.label;
+                            state.target = p.target;
+                            state.count = 0;
+                            state.userName = ""; 
+                            updateUI();
+                            saveData();
+                            mainModal.classList.add('hidden');
+                        };
+                    }
+
+                    btn.appendChild(inner);
+
+                    if (state.isEditingPresets) {
+                        const delBtn = document.createElement('button');
+                        delBtn.className = 'p-4 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500/20 transition-colors';
+                        delBtn.innerHTML = '<i data-lucide="trash-2" class="w-5 h-5"></i>';
+                        delBtn.onclick = () => {
+                            state.presets.splice(idx, 1);
+                            saveData();
+                            openModal('presets');
+                        };
+                        btn.appendChild(delBtn);
+                    } else {
+                        inner.innerHTML += '<i data-lucide="chevron-right" class="w-4 h-4"></i>';
+                    }
+
                     content.appendChild(btn);
                 });
+
+                if (state.isEditingPresets) {
+                    const resetPresets = document.createElement('button');
+                    resetPresets.className = 'w-full text-slate-500 text-[10px] uppercase font-bold tracking-widest mt-8 hover:text-white transition-colors';
+                    resetPresets.innerText = "Reset to Default Presets";
+                    resetPresets.onclick = () => {
+                        state.presets = [...DEFAULT_PRESETS];
+                        saveData();
+                        openModal('presets');
+                    };
+                    content.appendChild(resetPresets);
+                }
             } else {
                 document.getElementById('modalTitle').innerText = "History";
+                editBtn.classList.add('hidden');
                 if (state.history.length === 0) {
-                    content.innerHTML = '<p class="text-center text-slate-500 py-8">No saved sessions.</p>';
+                    content.innerHTML = '<p class="text-center text-slate-500 py-8 text-sm">No saved sessions.</p>';
                 } else {
                     state.history.forEach(h => {
                         const div = document.createElement('div');
@@ -334,13 +428,24 @@
             lucide.createIcons();
         }
 
+        let editMode = 'custom'; // 'custom' or 'preset'
+        function openEditTasbeeh(mode = 'custom') {
+            editMode = mode;
+            document.getElementById('editTasbeehTitle').innerText = mode === 'custom' ? "Custom Tasbeeh" : "Add New Preset";
+            document.getElementById('editTasbeehSubtitle').innerText = mode === 'custom' ? "One-time name & target." : "This will be saved to your preset list.";
+            document.getElementById('tasbeehNameInput').value = mode === 'custom' ? state.label : "";
+            document.getElementById('tasbeehTargetInput').value = mode === 'custom' ? state.target : 1000;
+            document.getElementById('saveTasbeehBtn').innerText = mode === 'custom' ? "Update Counter" : "Add to Presets";
+            editTasbeehModal.classList.remove('hidden');
+        }
+
         window.resumeItem = (id) => {
             const item = state.history.find(h => h.id === id);
             if (item) {
                 state.label = item.label;
                 state.count = item.count;
                 state.target = item.target;
-                state.userName = item.userName || ""; // Keep the existing name
+                state.userName = item.userName || ""; 
                 state.history = state.history.filter(h => h.id !== id);
                 updateUI();
                 saveData();
@@ -353,7 +458,7 @@
             state.history = state.history.filter(h => h.id !== id);
             saveData();
             openModal('history');
-        }
+        };
 
         // Events
         document.getElementById('saveNameBtn').onclick = () => {
@@ -366,10 +471,39 @@
             if (state.count > 0) saveSession();
         };
 
+        document.getElementById('saveTasbeehBtn').onclick = () => {
+            const nameIn = document.getElementById('tasbeehNameInput');
+            const targetIn = document.getElementById('tasbeehTargetInput');
+            const label = nameIn.value.trim() || "Tasbeeh";
+            const target = parseInt(targetIn.value) || 1000;
+
+            if (editMode === 'custom') {
+                state.label = label;
+                state.target = target;
+                state.count = 0;
+                state.userName = "";
+                updateUI();
+                showToast("Counter Updated");
+            } else {
+                state.presets.push({ label, target });
+                showToast("Preset Added");
+                // Switch to preset view to see new addition
+                setTimeout(() => openModal('presets'), 100);
+            }
+
+            editTasbeehModal.classList.add('hidden');
+            saveData();
+        };
+
+        document.getElementById('editPresetsBtn').onclick = () => {
+            state.isEditingPresets = !state.isEditingPresets;
+            openModal('presets');
+        };
+
         document.getElementById('resetBtn').onclick = () => {
             openConfirm("Reset Counter?", "Clear current progress? This will start a new session.", "Reset", () => {
                 state.count = 0;
-                state.userName = ""; // Reset user for a fresh count
+                state.userName = ""; 
                 updateUI();
                 saveData();
             });
@@ -380,8 +514,16 @@
             nameModal.classList.remove('hidden');
         };
 
+        labelContainer.onclick = (e) => {
+            e.stopPropagation();
+            openEditTasbeeh('custom');
+        };
+
         document.getElementById('finishBtn').onclick = startSaveFlow;
-        document.getElementById('presetBtn').onclick = () => openModal('presets');
+        document.getElementById('presetBtn').onclick = () => {
+            state.isEditingPresets = false;
+            openModal('presets');
+        };
         document.getElementById('historyBtn').onclick = () => openModal('history');
         document.getElementById('closeModal').onclick = () => mainModal.classList.add('hidden');
         document.getElementById('confirmCancel').onclick = () => confirmModal.classList.add('hidden');
