@@ -106,6 +106,19 @@
             border-radius: inherit;
             animation: pulse-ring 1.5s infinite;
         }
+
+        /* Modal Base styling for all popups to ensure high z-index */
+        .modal-base {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
     </style>
 </head>
 <body id="appBody" class="bg-gradient-dynamic text-white min-h-screen overflow-hidden flex flex-col theme-emerald">
@@ -189,7 +202,7 @@
     </main>
 
     <!-- Tutorial Overlay -->
-    <div id="tutorialOverlay" class="fixed inset-0 bg-black/90 z-[100] hidden flex items-center justify-center p-6 backdrop-blur-md">
+    <div id="tutorialOverlay" class="modal-base hidden flex-col">
         <div class="max-w-xs w-full text-center">
             <div id="tutorialIcon" class="w-16 h-16 bg-primary-fade rounded-full flex items-center justify-center mx-auto mb-6 text-primary">
                 <i data-lucide="info" class="w-8 h-8"></i>
@@ -203,9 +216,9 @@
         </div>
     </div>
 
-    <!-- Main Modal Overlay -->
-    <div id="modalOverlay" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-4">
-        <div class="bg-slate-900 w-full max-w-md rounded-3xl p-6 shadow-2xl border border-white/10">
+    <!-- Main Modal Overlay (Presets/History/Theme) -->
+    <div id="modalOverlay" class="modal-base hidden items-end sm:items-center">
+        <div class="bg-slate-900 w-full max-w-md rounded-3xl p-6 shadow-2xl border border-white/10 mb-0 sm:mb-0">
             <div class="flex justify-between items-center mb-6">
                 <h3 id="modalTitle" class="text-xl font-bold">Presets</h3>
                 <div class="flex gap-2">
@@ -222,7 +235,7 @@
     </div>
 
     <!-- Edit Tasbeeh Modal -->
-    <div id="editTasbeehModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] hidden flex items-center justify-center p-6">
+    <div id="editTasbeehModal" class="modal-base hidden">
         <div class="bg-slate-900 w-full max-w-sm rounded-3xl p-8 border border-primary-fade shadow-2xl">
             <h3 id="editTasbeehTitle" class="text-2xl font-bold text-center mb-2 text-primary">Tasbeeh Details</h3>
             <p id="editTasbeehSubtitle" class="text-slate-400 text-sm text-center mb-6">Set your name and target.</p>
@@ -236,7 +249,7 @@
     </div>
 
     <!-- Name Entry Modal -->
-    <div id="nameModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] hidden flex items-center justify-center p-6">
+    <div id="nameModal" class="modal-base hidden">
         <div class="bg-slate-900 w-full max-w-sm rounded-3xl p-8 border border-primary-fade shadow-2xl">
             <h3 class="text-2xl font-bold text-center mb-2 text-primary">Tasbeeh Tag</h3>
             <p class="text-slate-400 text-sm text-center mb-6">Enter the name of the person performing this Tasbeeh.</p>
@@ -246,18 +259,18 @@
     </div>
 
     <!-- Confirm Modal -->
-    <div id="confirmModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-70 hidden flex items-center justify-center p-6">
-        <div class="bg-slate-900 w-full max-w-xs rounded-3xl p-6 border border-white/10 text-center">
-            <h3 id="confirmTitle" class="text-lg font-bold mb-2">Reset Counter?</h3>
+    <div id="confirmModal" class="modal-base hidden">
+        <div class="bg-slate-900 w-full max-w-xs rounded-3xl p-6 border border-white/10 text-center shadow-2xl">
+            <h3 id="confirmTitle" class="text-lg font-bold mb-2 text-white">Reset Counter?</h3>
             <p id="confirmText" class="text-slate-400 text-sm mb-6">This action cannot be undone.</p>
             <div class="flex gap-3">
-                <button id="confirmCancel" class="flex-1 bg-white/5 hover:bg-white/10 py-3 rounded-xl transition-all">Cancel</button>
-                <button id="confirmAction" class="flex-1 bg-red-600 hover:bg-red-500 py-3 rounded-xl transition-all">Reset</button>
+                <button id="confirmCancel" class="flex-1 bg-white/5 hover:bg-white/10 py-3 rounded-xl transition-all text-white font-medium">Cancel</button>
+                <button id="confirmAction" class="flex-1 bg-red-600 hover:bg-red-500 py-3 rounded-xl transition-all text-white font-bold">Reset</button>
             </div>
         </div>
     </div>
 
-    <div id="vibrationFlash" class="fixed inset-0 bg-primary-fade pointer-events-none opacity-0 transition-opacity duration-150"></div>
+    <div id="vibrationFlash" class="fixed inset-0 bg-primary-fade pointer-events-none opacity-0 transition-opacity duration-150 z-50"></div>
 
     <script>
         // State
@@ -381,7 +394,16 @@
             setTimeout(() => flash.style.opacity = '0', 80);
         }
 
+        function anyModalOpen() {
+            return !mainModal.classList.contains('hidden') || 
+                   !nameModal.classList.contains('hidden') || 
+                   !confirmModal.classList.contains('hidden') || 
+                   !editTasbeehModal.classList.contains('hidden') || 
+                   !tutorialOverlay.classList.contains('hidden');
+        }
+
         function increment(e) {
+            if (anyModalOpen()) return;
             if (e) { e.preventDefault(); e.stopPropagation(); }
             state.count++;
             if (state.count % 100 === 0 || state.count === state.target) triggerHaptic();
@@ -690,7 +712,8 @@
             openModal('presets');
         };
 
-        document.getElementById('resetBtn').onclick = () => {
+        document.getElementById('resetBtn').onclick = (e) => {
+            e.stopPropagation();
             openConfirm("Reset Counter?", "Clear current progress?", "Reset", () => {
                 state.count = 0;
                 state.userName = ""; 
