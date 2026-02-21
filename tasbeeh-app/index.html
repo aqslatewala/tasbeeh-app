@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Elite Tasbeeh Counter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .counter-glow {
+            text-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .tap-active:active {
+            transform: scale(0.96);
+            transition: transform 0.05s;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .no-select {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen overflow-hidden flex flex-col">
+
+    <!-- Header -->
+    <header class="p-4 flex justify-between items-center z-10">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
+                <i data-lucide="hash" class="w-5 h-5 text-slate-950"></i>
+            </div>
+            <h1 class="font-semibold text-lg tracking-tight">Tasbeeh</h1>
+        </div>
+        <div class="flex gap-4">
+            <button id="historyBtn" class="p-2 hover:bg-white/10 rounded-full transition-colors">
+                <i data-lucide="history" class="w-6 h-6"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Interaction Area -->
+    <main id="tapArea" class="flex-grow flex flex-col items-center justify-center relative no-select tap-active cursor-pointer">
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
+            <div class="w-72 h-72 border-8 border-emerald-500 rounded-full"></div>
+        </div>
+
+        <div class="text-center z-10">
+            <span id="labelDisplay" class="text-emerald-400 text-sm font-semibold tracking-widest uppercase mb-2 block">Loading...</span>
+            <h2 id="counterDisplay" class="text-8xl md:text-9xl font-extrabold counter-glow">0</h2>
+            <div class="mt-4 flex flex-col items-center gap-2">
+                <p id="targetDisplay" class="text-slate-500 font-medium">Target: --</p>
+                <div id="progressBar" class="w-32 h-1 bg-slate-800 rounded-full overflow-hidden">
+                    <div id="progressFill" class="h-full bg-emerald-500 transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute bottom-12 text-slate-400 text-sm animate-pulse">
+            Tap anywhere to count
+        </div>
+    </main>
+
+    <!-- Bottom Controls -->
+    <footer class="p-6 grid grid-cols-3 gap-4 z-10 bg-slate-950/80 backdrop-blur-md">
+        <button id="resetBtn" class="glass p-4 rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-colors">
+            <i data-lucide="rotate-ccw" class="w-5 h-5 text-orange-400"></i>
+            <span class="text-xs font-medium">Reset</span>
+        </button>
+        <button id="presetBtn" class="glass p-4 rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-colors">
+            <i data-lucide="list-music" class="w-5 h-5 text-blue-400"></i>
+            <span class="text-xs font-medium">Presets</span>
+        </button>
+        <button id="finishBtn" class="glass p-4 rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-colors">
+            <i data-lucide="save" class="w-5 h-5 text-emerald-400"></i>
+            <span class="text-xs font-medium">Log Done</span>
+        </button>
+    </footer>
+
+    <!-- Overlay: Presets & History -->
+    <div id="modalOverlay" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-4">
+        <div class="bg-slate-900 w-full max-w-md rounded-3xl p-6 shadow-2xl border border-white/10">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="modalTitle" class="text-xl font-bold">Presets</h3>
+                <button id="closeModal" class="p-2 bg-white/5 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div id="modalContent" class="space-y-3 max-h-[60vh] overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <div id="vibrationFlash" class="fixed inset-0 bg-emerald-500/10 pointer-events-none opacity-0 transition-opacity duration-150"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'tasbeeh-app';
+
+        // State (Local memory for maximum performance)
+        let state = {
+            count: 0,
+            target: 33,
+            label: "SubhanAllah",
+            user: null,
+            history: []
+        };
+
+        const presets = [
+            { label: "SubhanAllah", target: 33 },
+            { label: "Alhamdulillah", target: 33 },
+            { label: "Allahu Akbar", target: 34 },
+            { label: "Astaghfirullah", target: 100 },
+            { label: "La ilaha illallah", target: 100 }
+        ];
+
+        // UI Elements
+        const counterDisplay = document.getElementById('counterDisplay');
+        const tapArea = document.getElementById('tapArea');
+        const resetBtn = document.getElementById('resetBtn');
+        const progressFill = document.getElementById('progressFill');
+        const labelDisplay = document.getElementById('labelDisplay');
+        const targetDisplay = document.getElementById('targetDisplay');
+        const flash = document.getElementById('vibrationFlash');
+
+        function updateUI() {
+            counterDisplay.innerText = state.count;
+            labelDisplay.innerText = state.label;
+            
+            if (state.target > 0) {
+                targetDisplay.innerText = `Target: ${state.target}`;
+                const percent = Math.min((state.count / state.target) * 100, 100);
+                progressFill.style.width = `${percent}%`;
+                if (state.count >= state.target) {
+                    progressFill.classList.replace('bg-emerald-500', 'bg-orange-400');
+                } else {
+                    progressFill.classList.replace('bg-orange-400', 'bg-emerald-500');
+                }
+            } else {
+                targetDisplay.innerText = "No Target";
+                progressFill.style.width = "0%";
+            }
+        }
+
+        function triggerHaptic(type = 'tap') {
+            if (navigator.vibrate) {
+                type === 'target' ? navigator.vibrate([100, 50, 100]) : navigator.vibrate(30);
+            }
+            flash.style.opacity = '1';
+            setTimeout(() => flash.style.opacity = '0', 80);
+        }
+
+        function increment() {
+            state.count++;
+            if (state.target > 0 && state.count === state.target) {
+                triggerHaptic('target');
+            } else {
+                triggerHaptic('tap');
+            }
+            // NO auto-save here to eliminate tap lag
+            updateUI();
+        }
+
+        async function logFinalSession() {
+            if (!state.user || state.count === 0) return;
+            
+            const originalCount = state.count;
+            const originalLabel = state.label;
+            
+            // Reset UI immediately for snappy feeling
+            state.count = 0;
+            updateUI();
+            showToast("Logging session...");
+
+            try {
+                // Perform the save in background
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'history'), {
+                    userId: state.user.uid,
+                    label: originalLabel,
+                    count: originalCount,
+                    target: state.target,
+                    timestamp: serverTimestamp()
+                });
+                showToast("Dhikr Logged Successfully");
+            } catch (err) {
+                console.error("Logging failed", err);
+                showToast("Error saving session");
+                // Restore count if save fails? Usually better to keep UI snappy
+            }
+        }
+
+        function showToast(msg) {
+            const existing = document.querySelector('.toast-msg');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'toast-msg fixed bottom-24 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-2 rounded-full font-medium shadow-lg z-[100] transition-opacity';
+            toast.innerText = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2500);
+        }
+
+        // Modal Logic
+        const modal = document.getElementById('modalOverlay');
+        const modalContent = document.getElementById('modalContent');
+        const modalTitle = document.getElementById('modalTitle');
+
+        function openModal(type) {
+            modal.classList.remove('hidden');
+            modalContent.innerHTML = '';
+            
+            if (type === 'presets') {
+                modalTitle.innerText = "Select Dhikr";
+                presets.forEach(p => {
+                    const btn = document.createElement('button');
+                    btn.className = 'w-full text-left p-4 glass rounded-xl hover:bg-white/10 flex justify-between items-center';
+                    btn.innerHTML = `<div><div class="font-bold">${p.label}</div><div class="text-xs text-slate-400">Target: ${p.target}</div></div><i data-lucide="chevron-right" class="w-4 h-4 text-slate-500"></i>`;
+                    btn.onclick = () => {
+                        state.label = p.label;
+                        state.target = p.target;
+                        state.count = 0;
+                        updateUI();
+                        modal.classList.add('hidden');
+                        lucide.createIcons();
+                    };
+                    modalContent.appendChild(btn);
+                });
+            } else if (type === 'history') {
+                modalTitle.innerText = "History";
+                if (state.history.length === 0) {
+                    modalContent.innerHTML = '<p class="text-center text-slate-500 py-8">No logged sessions yet.</p>';
+                } else {
+                    state.history.forEach(h => {
+                        const div = document.createElement('div');
+                        div.className = 'p-4 glass rounded-xl flex justify-between items-center mb-2';
+                        div.innerHTML = `<div><div class="font-bold">${h.label}</div><div class="text-xs text-slate-400">${h.timestamp ? new Date(h.timestamp.seconds * 1000).toLocaleDateString() : 'Just now'}</div></div><div class="text-xl font-bold text-emerald-400">${h.count}</div>`;
+                        modalContent.appendChild(div);
+                    });
+                }
+            }
+            lucide.createIcons();
+        }
+
+        const init = async () => {
+            const initAuth = async () => {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            };
+            
+            await initAuth();
+
+            onAuthStateChanged(auth, async (user) => {
+                state.user = user;
+                if (user) {
+                    updateUI();
+                    // Listen for history
+                    const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'history'));
+                    onSnapshot(q, (snapshot) => {
+                        // Simple filtering in memory as per Rule 2
+                        state.history = snapshot.docs
+                            .map(doc => doc.data())
+                            .filter(d => d.userId === user.uid)
+                            .sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+                    }, (err) => console.error(err));
+                }
+            });
+
+            lucide.createIcons();
+        };
+
+        // UI Event Listeners
+        tapArea.onclick = (e) => {
+            if (e.target.closest('button')) return;
+            increment();
+        };
+
+        resetBtn.onclick = () => {
+            state.count = 0;
+            updateUI();
+        };
+        presetBtn.onclick = () => openModal('presets');
+        historyBtn.onclick = () => openModal('history');
+        finishBtn.onclick = logFinalSession;
+        document.getElementById('closeModal').onclick = () => modal.classList.add('hidden');
+        
+        tapArea.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) e.preventDefault();
+        }, { passive: false });
+
+        init();
+    </script>
+</body>
+</html>
