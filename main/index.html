@@ -48,57 +48,61 @@
 </head>
 <body class="bg-slate-950 text-white min-h-screen overflow-hidden flex flex-col">
 
-    <!-- Header -->
-    <header class="p-4 flex justify-between items-center z-10">
+    <!-- Header & Controls -->
+    <header class="p-4 flex flex-col gap-4 z-10 bg-slate-950/80 backdrop-blur-md border-b border-white/5">
         <div class="flex items-center gap-2">
             <div class="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
                 <i data-lucide="hash" class="w-5 h-5 text-slate-950"></i>
             </div>
             <h1 class="font-semibold text-lg tracking-tight">Tasbeeh Counter</h1>
         </div>
+
+        <!-- Control Buttons -->
+        <div class="grid grid-cols-4 gap-2">
+            <button id="resetBtn" class="glass p-2 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-colors">
+                <i data-lucide="rotate-ccw" class="w-4 h-4 text-orange-400"></i>
+                <span class="text-[10px] font-medium">Reset</span>
+            </button>
+            <button id="presetBtn" class="glass p-2 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-colors">
+                <i data-lucide="list-music" class="w-4 h-4 text-blue-400"></i>
+                <span class="text-[10px] font-medium">Presets</span>
+            </button>
+            <button id="historyBtn" class="glass p-2 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-colors">
+                <i data-lucide="history" class="w-4 h-4 text-purple-400"></i>
+                <span class="text-[10px] font-medium">History</span>
+            </button>
+            <button id="finishBtn" class="glass p-2 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-colors">
+                <i data-lucide="save" class="w-4 h-4 text-emerald-400"></i>
+                <span class="text-[10px] font-medium leading-tight">Save</span>
+            </button>
+        </div>
     </header>
 
     <!-- Main Interaction Area -->
-    <main id="tapArea" class="flex-grow flex flex-col items-center justify-center relative no-select tap-active cursor-pointer">
-        <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
-            <div class="w-72 h-72 border-8 border-emerald-500 rounded-full"></div>
+    <main id="tapArea" class="flex-grow flex flex-col items-center justify-center relative no-select tap-active cursor-pointer p-4">
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5">
+            <div class="w-64 h-64 border-4 border-emerald-500 rounded-full"></div>
         </div>
 
-        <div class="text-center z-10 pointer-events-none">
-            <span id="labelDisplay" class="text-emerald-400 text-sm font-semibold tracking-widest uppercase mb-2 block">Loading...</span>
-            <h2 id="counterDisplay" class="text-8xl md:text-9xl font-extrabold counter-glow">0</h2>
-            <div class="mt-4 flex flex-col items-center gap-2">
-                <p id="targetDisplay" class="text-slate-500 font-medium">Target: --</p>
-                <div id="progressBar" class="w-32 h-1 bg-slate-800 rounded-full overflow-hidden">
-                    <div id="progressFill" class="h-full bg-emerald-500 transition-all duration-300" style="width: 0%"></div>
+        <div class="text-center z-10 pointer-events-none flex flex-col items-center gap-2">
+            <span id="labelDisplay" class="text-emerald-400 text-sm font-semibold tracking-widest uppercase block">Loading...</span>
+            <h2 id="counterDisplay" class="text-8xl md:text-9xl font-extrabold counter-glow leading-none">0</h2>
+            
+            <div class="flex flex-col items-center gap-3">
+                <div class="flex flex-col items-center">
+                    <p id="targetDisplay" class="text-slate-500 font-medium text-sm">Target: --</p>
+                    <div id="progressBar" class="w-32 h-1 bg-slate-800 rounded-full overflow-hidden mt-1">
+                        <div id="progressFill" class="h-full bg-emerald-500 transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <!-- Moved hint message closer to the center to avoid bottom overlap -->
+                <div class="text-slate-500 text-[10px] uppercase tracking-widest animate-pulse mt-4">
+                    Tap anywhere to count
                 </div>
             </div>
         </div>
-
-        <div class="absolute bottom-12 text-slate-400 text-sm animate-pulse pointer-events-none">
-            Tap anywhere to count
-        </div>
     </main>
-
-    <!-- Bottom Controls -->
-    <footer class="p-6 grid grid-cols-4 gap-2 z-10 bg-slate-950/80 backdrop-blur-md">
-        <button id="resetBtn" class="glass p-3 rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-colors">
-            <i data-lucide="rotate-ccw" class="w-5 h-5 text-orange-400"></i>
-            <span class="text-[10px] font-medium">Reset</span>
-        </button>
-        <button id="presetBtn" class="glass p-3 rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-colors">
-            <i data-lucide="list-music" class="w-5 h-5 text-blue-400"></i>
-            <span class="text-[10px] font-medium">Presets</span>
-        </button>
-        <button id="historyBtn" class="glass p-3 rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-colors">
-            <i data-lucide="history" class="w-5 h-5 text-purple-400"></i>
-            <span class="text-[10px] font-medium">History</span>
-        </button>
-        <button id="finishBtn" class="glass p-3 rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-colors">
-            <i data-lucide="save" class="w-5 h-5 text-emerald-400"></i>
-            <span class="text-[10px] font-medium leading-tight">Save</span>
-        </button>
-    </footer>
 
     <!-- Overlay: Presets & History -->
     <div id="modalOverlay" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-4">
@@ -187,7 +191,6 @@
 
         function triggerHaptic(type = 'milestone') {
             if (navigator.vibrate) {
-                // Stronger vibration for hitting the final target, medium for every 100
                 type === 'target' ? navigator.vibrate([100, 50, 100]) : navigator.vibrate(60);
             }
             // Visual feedback
@@ -196,7 +199,6 @@
         }
 
         function increment(e) {
-            // Prevent event from bubbling or being treated as a click after pointerdown
             if (e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -204,7 +206,6 @@
             
             state.count++;
             
-            // Check for vibration conditions
             if (state.target > 0 && state.count === state.target) {
                 triggerHaptic('target');
             } else if (state.count % 100 === 0) {
@@ -238,24 +239,20 @@
             const existing = document.querySelector('.toast-msg');
             if (existing) existing.remove();
             const toast = document.createElement('div');
-            toast.className = 'toast-msg fixed bottom-24 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-2 rounded-full font-medium shadow-lg z-[100] transition-opacity';
+            toast.className = 'toast-msg fixed bottom-12 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-2 rounded-full font-medium shadow-lg z-[100] transition-opacity';
             toast.innerText = msg;
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 2500);
         }
 
-        // Global functions for button clicks inside modal
         window.continueTasbeeh = (id) => {
             const itemIndex = state.history.findIndex(h => h.id === id);
             if (itemIndex !== -1) {
                 const item = state.history[itemIndex];
-                
                 state.label = item.label;
                 state.count = item.count;
                 state.target = item.target || 1000;
-                
                 state.history.splice(itemIndex, 1);
-                
                 updateUI();
                 saveData();
                 modal.classList.add('hidden');
@@ -338,14 +335,12 @@
             lucide.createIcons();
         }
 
-        // INITIALIZATION
         function initApp() {
             loadData();
             updateUI();
             lucide.createIcons();
         }
 
-        // Use pointerdown for instant responsiveness
         tapArea.onpointerdown = (e) => {
             if (!e.target.closest('button')) {
                 increment(e);
@@ -364,7 +359,6 @@
         document.getElementById('finishBtn').onclick = logFinalSession;
         document.getElementById('closeModal').onclick = () => modal.classList.add('hidden');
         
-        // Prevent default touch behaviors like scrolling while tapping
         tapArea.addEventListener('touchstart', (e) => {
             if (e.touches.length > 1) e.preventDefault();
         }, { passive: false });
