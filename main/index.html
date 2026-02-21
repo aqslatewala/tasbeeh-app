@@ -123,10 +123,20 @@
             justify-content: center;
             padding: 1.5rem;
         }
+
+        #fireworksCanvas {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 40;
+        }
     </style>
 </head>
 <body id="appBody" class="bg-gradient-dynamic text-white min-h-screen overflow-hidden flex flex-col theme-emerald">
     
+    <!-- Fireworks Canvas -->
+    <canvas id="fireworksCanvas"></canvas>
+
     <!-- Decorative Background Layers -->
     <div class="bg-grid"></div>
     <div class="dynamic-glow"></div>
@@ -146,9 +156,9 @@
                     <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
                     Add Shortcut
                 </button>
-                <!-- Theme Switcher -->
-                <button id="themeBtn" title="Change Color" class="p-2 text-slate-400 hover:text-primary transition-colors">
-                    <i data-lucide="palette" class="w-5 h-5"></i>
+                <!-- Combined Settings Button -->
+                <button id="settingsBtn" title="Settings" class="p-2 text-slate-400 hover:text-primary transition-colors">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
                 </button>
                 <button id="helpBtn" title="Show Tutorial" class="p-2 text-slate-400 hover:text-primary transition-colors">
                     <i data-lucide="help-circle" class="w-5 h-5"></i>
@@ -263,7 +273,7 @@
         </div>
     </div>
 
-    <!-- Main Modal Overlay (Presets/History/Theme) -->
+    <!-- Main Modal Overlay (Presets/History/Settings) -->
     <div id="modalOverlay" class="modal-base hidden items-end sm:items-center">
         <div class="bg-slate-900 w-full max-w-md rounded-3xl p-6 shadow-2xl border border-white/10 mb-0 sm:mb-0">
             <div class="flex justify-between items-center mb-6">
@@ -283,7 +293,7 @@
 
     <!-- Edit Tasbeeh Modal -->
     <div id="editTasbeehModal" class="modal-base hidden">
-        <div class="bg-slate-900 w-full max-w-sm rounded-3xl p-8 border border-primary-fade shadow-2xl">
+        <div class="bg-slate-900 w-full max-sm rounded-3xl p-8 border border-primary-fade shadow-2xl">
             <h3 id="editTasbeehTitle" class="text-2xl font-bold text-center mb-2 text-primary">Tasbeeh Details</h3>
             <p id="editTasbeehSubtitle" class="text-slate-400 text-sm text-center mb-6">Set your name and target.</p>
             <input type="text" id="tasbeehNameInput" placeholder="e.g. SubhanAllah" class="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-4 text-white focus:border-primary outline-none transition-all text-center mb-4">
@@ -297,7 +307,7 @@
 
     <!-- Name Entry Modal -->
     <div id="nameModal" class="modal-base hidden">
-        <div class="bg-slate-900 w-full max-w-sm rounded-3xl p-8 border border-primary-fade shadow-2xl">
+        <div class="bg-slate-900 w-full max-sm rounded-3xl p-8 border border-primary-fade shadow-2xl">
             <h3 class="text-2xl font-bold text-center mb-2 text-primary">Tasbeeh Tag</h3>
             <p class="text-slate-400 text-sm text-center mb-6">Enter the name of the person performing this Tasbeeh.</p>
             <input type="text" id="nameInput" placeholder="Enter name" class="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-4 text-white focus:border-primary outline-none transition-all text-center mb-4">
@@ -307,7 +317,7 @@
 
     <!-- Confirm Modal -->
     <div id="confirmModal" class="modal-base hidden">
-        <div class="bg-slate-900 w-full max-w-xs rounded-3xl p-6 border border-white/10 text-center shadow-2xl">
+        <div class="bg-slate-900 w-full max-xs rounded-3xl p-6 border border-white/10 text-center shadow-2xl">
             <h3 id="confirmTitle" class="text-lg font-bold mb-2 text-white">Reset Counter?</h3>
             <p id="confirmText" class="text-slate-400 text-sm mb-6">This action cannot be undone.</p>
             <div class="flex gap-3">
@@ -320,6 +330,38 @@
     <div id="vibrationFlash" class="fixed inset-0 bg-primary-fade pointer-events-none opacity-0 transition-opacity duration-150 z-50"></div>
 
     <script>
+        // --- FIREWORKS LOGIC ---
+        const canvas = document.getElementById('fireworksCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.onresize = resize; resize();
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y; this.color = color;
+                this.velocity = { x: (Math.random()-0.5)*12, y: (Math.random()-0.5)*12 };
+                this.alpha = 1;
+            }
+            update() { this.x += this.velocity.x; this.y += this.velocity.y; this.velocity.y += 0.2; this.alpha -= 0.012; }
+            draw() { ctx.globalAlpha = this.alpha; ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, 2.5, 0, Math.PI*2); ctx.fill(); }
+        }
+
+        function triggerFireworks() {
+            const rect = document.getElementById('counterDisplay').getBoundingClientRect();
+            const cx = rect.left + rect.width/2; const cy = rect.top + rect.height/2;
+            const color = getComputedStyle(document.body).getPropertyValue('--primary-hex');
+            for(let i=0; i<60; i++) particles.push(new Particle(cx, cy, color));
+        }
+
+        function animateFireworks() {
+            ctx.clearRect(0,0,canvas.width, canvas.height);
+            particles = particles.filter(p => p.alpha > 0);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animateFireworks);
+        }
+        animateFireworks();
+
         // State
         const DEFAULT_PRESETS = [
             { label: "Ya Allah", target: 1000 },
@@ -342,6 +384,7 @@
         let state = {
             count: 0,
             target: 1000,
+            milestone: 100, // Celebration Interval
             label: "Ya Allah",
             userName: "", 
             history: [],
@@ -363,7 +406,7 @@
         const badgeName = document.getElementById('badgeName');
         const labelContainer = document.getElementById('labelContainer');
         const helpBtn = document.getElementById('helpBtn');
-        const themeBtn = document.getElementById('themeBtn');
+        const settingsBtn = document.getElementById('settingsBtn');
         const appBody = document.getElementById('appBody');
         const shortcutBtn = document.getElementById('shortcutBtn');
         
@@ -376,9 +419,10 @@
         const shortcutModal = document.getElementById('shortcutModal');
 
         function saveData() {
-            localStorage.setItem('tasbeeh_state_v4', JSON.stringify({
+            localStorage.setItem('tasbeeh_state_v5', JSON.stringify({
                 count: state.count,
                 target: state.target,
+                milestone: state.milestone,
                 label: state.label,
                 userName: state.userName,
                 presets: state.presets,
@@ -397,13 +441,14 @@
         }
 
         function loadData() {
-            const savedState = localStorage.getItem('tasbeeh_state_v4');
+            const savedState = localStorage.getItem('tasbeeh_state_v5');
             const savedHistory = localStorage.getItem('tasbeeh_history');
             
             if (savedState) {
                 const parsed = JSON.parse(savedState);
                 state.count = parsed.count || 0;
                 state.target = parsed.target || 1000;
+                state.milestone = parsed.milestone || 100;
                 state.label = parsed.label || "Ya Allah";
                 state.userName = parsed.userName || "";
                 state.presets = parsed.presets || [...DEFAULT_PRESETS];
@@ -456,43 +501,28 @@
             if (anyModalOpen()) return;
             if (e) { e.preventDefault(); e.stopPropagation(); }
             state.count++;
-            if (state.count % 100 === 0 || state.count === state.target) triggerHaptic();
+            
+            // FIREWORKS TRIGGER: On milestone interval OR reaching target
+            if (state.count % state.milestone === 0 || state.count === state.target) {
+                triggerFireworks();
+                triggerHaptic();
+            } else if(navigator.vibrate) {
+                navigator.vibrate(40);
+            }
+
+            flash.style.opacity = '1';
+            setTimeout(() => flash.style.opacity = '0', 80);
+            
             updateUI();
             saveData();
         }
 
-        // Restored Detailed Tutorial Steps
         const tutorialSteps = [
-            {
-                title: "Tap to Count",
-                text: "The entire screen is your button. Tap anywhere in the center to increment the count.",
-                icon: "hand-tap",
-                highlight: "tapArea"
-            },
-            {
-                title: "Personalize Color",
-                text: "Tap the palette icon to choose a color that resonates with your heart.",
-                icon: "palette",
-                highlight: "themeBtn"
-            },
-            {
-                title: "Add Shortcut",
-                text: "Save this counter as an app on your phone for quick, full-screen access anytime.",
-                icon: "plus-circle",
-                highlight: "shortcutBtn"
-            },
-            {
-                title: "Change Label",
-                text: "Tap the label above the counter to set a custom name and target for your current session.",
-                icon: "pencil",
-                highlight: "labelContainer"
-            },
-            {
-                title: "Save History",
-                text: "When you're done, tap 'Save' to tag your session with a name and store it in your history.",
-                icon: "save",
-                highlight: "finishBtn"
-            }
+            { title: "Tap to Count", text: "The entire screen is your button. Tap anywhere in the center to increment the count.", icon: "hand-tap", highlight: "tapArea" },
+            { title: "Settings & Colors", text: "Customize colors and update celebration milestones here.", icon: "settings", highlight: "settingsBtn" },
+            { title: "Add Shortcut", text: "Save this counter as an app on your phone for quick, full-screen access anytime.", icon: "plus-circle", highlight: "shortcutBtn" },
+            { title: "Change Label", text: "Tap the label above the counter to set a custom name and target.", icon: "pencil", highlight: "labelContainer" },
+            { title: "Save History", text: "Tap 'Save' to tag your session with a name and store it in your history.", icon: "save", highlight: "finishBtn" }
         ];
 
         function startTutorial() {
@@ -506,12 +536,9 @@
             document.getElementById('tutorialTitle').innerText = step.title;
             document.getElementById('tutorialText').innerText = step.text;
             document.getElementById('tutorialIcon').innerHTML = `<i data-lucide="${step.icon}" class="w-8 h-8"></i>`;
-            
             document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
-            
             const targetEl = document.getElementById(step.highlight);
             if (targetEl) targetEl.classList.add('tutorial-highlight');
-            
             document.getElementById('tutorialNext').innerText = state.tutorialStep === tutorialSteps.length - 1 ? "Get Started" : "Next";
             lucide.createIcons();
         }
@@ -537,7 +564,6 @@
             }
         }
 
-        // Shortcut Logic
         shortcutBtn.onclick = (e) => {
             e.stopPropagation();
             const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
@@ -554,10 +580,7 @@
             document.getElementById('confirmText').innerText = text;
             const confirmBtn = document.getElementById('confirmAction');
             confirmBtn.innerText = actionLabel;
-            confirmBtn.onclick = () => {
-                onConfirm();
-                confirmModal.classList.add('hidden');
-            };
+            confirmBtn.onclick = () => { onConfirm(); confirmModal.classList.add('hidden'); };
             confirmModal.classList.remove('hidden');
         }
 
@@ -623,45 +646,50 @@
                 state.presets.forEach((p, idx) => {
                     const btn = document.createElement('div');
                     btn.className = 'preset-item w-full flex gap-2 items-center';
-                    
                     const inner = document.createElement('button');
                     inner.className = `flex-grow text-left p-4 glass rounded-xl flex justify-between items-center ${state.isEditingPresets ? 'opacity-50 cursor-default' : 'hover:bg-white/10'}`;
                     inner.innerHTML = `<div><div class="font-bold">${p.label}</div><div class="text-xs text-slate-400">Target: ${p.target}</div></div>`;
-                    
                     if (!state.isEditingPresets) {
                         inner.onclick = () => {
-                            state.label = p.label;
-                            state.target = p.target;
-                            state.count = 0;
-                            state.userName = ""; 
-                            updateUI();
-                            saveData();
-                            mainModal.classList.add('hidden');
+                            state.label = p.label; state.target = p.target; state.count = 0; state.userName = ""; 
+                            updateUI(); saveData(); mainModal.classList.add('hidden');
                         };
                     }
-
                     btn.appendChild(inner);
-
                     if (state.isEditingPresets) {
                         const delBtn = document.createElement('button');
                         delBtn.className = 'p-4 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500/20 transition-colors';
                         delBtn.innerHTML = '<i data-lucide="trash-2" class="w-5 h-5"></i>';
-                        delBtn.onclick = () => {
-                            state.presets.splice(idx, 1);
-                            saveData();
-                            openModal('presets');
-                        };
+                        delBtn.onclick = () => { state.presets.splice(idx, 1); saveData(); openModal('presets'); };
                         btn.appendChild(delBtn);
-                    } else {
-                        inner.innerHTML += '<i data-lucide="chevron-right" class="w-4 h-4"></i>';
-                    }
-
+                    } else { inner.innerHTML += '<i data-lucide="chevron-right" class="w-4 h-4"></i>'; }
                     content.appendChild(btn);
                 });
-            } else if (type === 'theme') {
-                document.getElementById('modalTitle').innerText = "Color Theme";
+            } else if (type === 'settings') {
+                document.getElementById('modalTitle').innerText = "App Settings";
                 editBtn.classList.add('hidden');
                 
+                // Milestone Section
+                const milestoneDiv = document.createElement('div');
+                milestoneDiv.className = 'mb-6 p-4 glass rounded-2xl border-primary-fade border';
+                milestoneDiv.innerHTML = `
+                    <div class="flex items-center gap-2 mb-3 text-primary font-bold text-sm">
+                        <i data-lucide="sparkles" class="w-4 h-4"></i> Celebration Milestone
+                    </div>
+                    <p class="text-[10px] text-slate-400 mb-3">Fireworks will trigger every X counts.</p>
+                    <div class="flex gap-2">
+                        <input type="number" id="milestoneInput" value="${state.milestone}" class="flex-grow bg-slate-950/50 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-primary transition-all">
+                        <button id="saveMilestone" class="bg-primary text-slate-950 px-4 py-2 rounded-xl font-bold text-xs">Update</button>
+                    </div>
+                `;
+                content.appendChild(milestoneDiv);
+
+                // Theme Section
+                const themeTitle = document.createElement('div');
+                themeTitle.className = 'px-1 text-[10px] text-slate-500 uppercase tracking-widest mb-3';
+                themeTitle.innerText = "Color Theme";
+                content.appendChild(themeTitle);
+
                 THEMES.forEach(t => {
                     const btn = document.createElement('button');
                     const isActive = state.currentTheme === t.id;
@@ -673,12 +701,21 @@
                         </div>
                         ${isActive ? '<i data-lucide="check" class="w-4 h-4 text-primary"></i>' : ''}
                     `;
-                    btn.onclick = () => {
-                        applyTheme(t.id);
-                        openModal('theme');
-                    };
+                    btn.onclick = () => { applyTheme(t.id); openModal('settings'); };
                     content.appendChild(btn);
                 });
+
+                // Attach Milestone logic
+                setTimeout(() => {
+                    document.getElementById('saveMilestone').onclick = () => {
+                        const val = parseInt(document.getElementById('milestoneInput').value);
+                        if (val > 0) {
+                            state.milestone = val;
+                            saveData();
+                            showToast(`Milestone updated to ${val}`);
+                        }
+                    };
+                }, 0);
             } else {
                 document.getElementById('modalTitle').innerText = "History";
                 editBtn.classList.add('hidden');
@@ -721,30 +758,20 @@
         window.resumeItem = (id) => {
             const item = state.history.find(h => h.id === id);
             if (item) {
-                state.label = item.label;
-                state.count = item.count;
-                state.target = item.target;
-                state.userName = item.userName || ""; 
+                state.label = item.label; state.count = item.count; state.target = item.target; state.userName = item.userName || ""; 
                 state.history = state.history.filter(h => h.id !== id);
-                updateUI();
-                saveData();
-                mainModal.classList.add('hidden');
+                updateUI(); saveData(); mainModal.classList.add('hidden');
             }
         };
 
-        window.deleteItem = (id) => {
-            state.history = state.history.filter(h => h.id !== id);
-            saveData();
-            openModal('history');
-        };
+        window.deleteItem = (id) => { state.history = state.history.filter(h => h.id !== id); saveData(); openModal('history'); };
 
         document.getElementById('saveNameBtn').onclick = () => {
             const input = document.getElementById('nameInput');
             const name = input.value.trim() || "Guest";
             state.userName = name;
             nameModal.classList.add('hidden');
-            updateUI();
-            saveData();
+            updateUI(); saveData();
             if (state.count > 0) saveSession();
         };
 
@@ -755,16 +782,11 @@
             const target = parseInt(targetIn.value) || 1000;
 
             if (editMode === 'custom') {
-                state.label = label;
-                state.target = target;
-                state.count = 0;
-                state.userName = "";
-                updateUI();
+                state.label = label; state.target = target; state.count = 0; state.userName = ""; updateUI();
             } else {
                 state.presets.push({ label, target });
                 setTimeout(() => openModal('presets'), 100);
             }
-
             editTasbeehModal.classList.add('hidden');
             saveData();
         };
@@ -777,31 +799,20 @@
         document.getElementById('resetBtn').onclick = (e) => {
             e.stopPropagation();
             openConfirm("Reset Counter?", "Clear current progress?", "Reset", () => {
-                state.count = 0;
-                state.userName = ""; 
-                updateUI();
-                saveData();
+                state.count = 0; state.userName = ""; updateUI(); saveData();
             });
         };
 
-        userBadge.onclick = () => {
-            document.getElementById('nameInput').value = state.userName;
-            nameModal.classList.remove('hidden');
-        };
-
+        userBadge.onclick = () => { document.getElementById('nameInput').value = state.userName; nameModal.classList.remove('hidden'); };
         labelContainer.onclick = (e) => { e.stopPropagation(); openEditTasbeeh('custom'); };
         document.getElementById('finishBtn').onclick = () => {
             if (state.count === 0) return;
-            if (!state.userName) {
-                document.getElementById('nameInput').value = "";
-                nameModal.classList.remove('hidden');
-                return;
-            }
+            if (!state.userName) { document.getElementById('nameInput').value = ""; nameModal.classList.remove('hidden'); return; }
             saveSession();
         };
         document.getElementById('presetBtn').onclick = () => { state.isEditingPresets = false; openModal('presets'); };
         document.getElementById('historyBtn').onclick = () => openModal('history');
-        document.getElementById('themeBtn').onclick = () => openModal('theme');
+        settingsBtn.onclick = () => openModal('settings');
         document.getElementById('closeModal').onclick = () => mainModal.classList.add('hidden');
         document.getElementById('confirmCancel').onclick = () => confirmModal.classList.add('hidden');
         
