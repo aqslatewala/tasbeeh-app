@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Elite Tasbeeh Counter</title>
+    <title>Abdulqadir Slatewala Tasbeeh Counter</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -87,7 +87,7 @@
         </button>
         <button id="finishBtn" class="glass p-4 rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-colors">
             <i data-lucide="save" class="w-5 h-5 text-emerald-400"></i>
-            <span class="text-xs font-medium">Log Done</span>
+            <span class="text-xs font-medium">Save Tasbeeh</span>
         </button>
     </footer>
 
@@ -109,27 +109,45 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = JSON.parse(__firebase_config);
+        // Global Variable Fallbacks for Deployment
+        let firebaseConfig;
+        try {
+            firebaseConfig = JSON.parse(__firebase_config);
+        } catch (e) {
+            console.warn("Firebase config not found in environment. Using local placeholder.");
+            // If you are deploying to GitHub, you would replace this with your actual Firebase config object
+            firebaseConfig = {
+                apiKey: "", 
+                authDomain: "",
+                projectId: "",
+                storageBucket: "",
+                messagingSenderId: "",
+                appId: ""
+            };
+        }
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'tasbeeh-app';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'tasbeeh-app-prod';
 
         // State (Local memory for maximum performance)
         let state = {
             count: 0,
-            target: 33,
-            label: "SubhanAllah",
+            target: 100,
+            label: "Ya Allah",
             user: null,
             history: []
         };
 
         const presets = [
-            { label: "SubhanAllah", target: 33 },
-            { label: "Alhamdulillah", target: 33 },
-            { label: "Allahu Akbar", target: 34 },
-            { label: "Astaghfirullah", target: 100 },
-            { label: "La ilaha illallah", target: 100 }
+            { label: "Ya Allah", target: 1000 },
+            { label: "Ya Mohammed", target: 1000 },
+            { label: "Ya Ali", target: 1000 },
+            { label: "Ya Fatema", target: 1000 },
+            { label: "Ya Hasan", target: 1000 },
+            { label: "Ya Hussain", target: 1000 },
+            { label: "Astagfirullah", target: 1000 }
         ];
 
         // UI Elements
@@ -175,23 +193,26 @@
             } else {
                 triggerHaptic('tap');
             }
-            // NO auto-save here to eliminate tap lag
             updateUI();
         }
 
         async function logFinalSession() {
             if (!state.user || state.count === 0) return;
             
+            // If config is missing, alert the user but don't crash
+            if (!firebaseConfig.apiKey) {
+                showToast("Firebase Config Missing - Set it up in the code!");
+                return;
+            }
+
             const originalCount = state.count;
             const originalLabel = state.label;
             
-            // Reset UI immediately for snappy feeling
             state.count = 0;
             updateUI();
             showToast("Logging session...");
 
             try {
-                // Perform the save in background
                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'history'), {
                     userId: state.user.uid,
                     label: originalLabel,
@@ -199,11 +220,10 @@
                     target: state.target,
                     timestamp: serverTimestamp()
                 });
-                showToast("Dhikr Logged Successfully");
+                showToast("Tasbeeh Saved Successfully");
             } catch (err) {
                 console.error("Logging failed", err);
                 showToast("Error saving session");
-                // Restore count if save fails? Usually better to keep UI snappy
             }
         }
 
@@ -245,7 +265,9 @@
                 });
             } else if (type === 'history') {
                 modalTitle.innerText = "History";
-                if (state.history.length === 0) {
+                if (!firebaseConfig.apiKey) {
+                    modalContent.innerHTML = '<p class="text-center text-slate-500 py-8">Cloud features require Firebase configuration.</p>';
+                } else if (state.history.length === 0) {
                     modalContent.innerHTML = '<p class="text-center text-slate-500 py-8">No logged sessions yet.</p>';
                 } else {
                     state.history.forEach(h => {
@@ -260,11 +282,23 @@
         }
 
         const init = async () => {
+            if (!firebaseConfig.apiKey) {
+                console.warn("App running in local mode. History/Logging disabled.");
+                labelDisplay.innerText = state.label;
+                updateUI();
+                lucide.createIcons();
+                return;
+            }
+
             const initAuth = async () => {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (e) {
+                    console.error("Auth init failed", e);
                 }
             };
             
@@ -274,10 +308,8 @@
                 state.user = user;
                 if (user) {
                     updateUI();
-                    // Listen for history
                     const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'history'));
                     onSnapshot(q, (snapshot) => {
-                        // Simple filtering in memory as per Rule 2
                         state.history = snapshot.docs
                             .map(doc => doc.data())
                             .filter(d => d.userId === user.uid)
