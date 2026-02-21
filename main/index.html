@@ -19,10 +19,9 @@
             text-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
         }
 
-        /* Faster scaling animation for rapid taps */
         .tap-active:active {
-            transform: scale(0.94);
-            transition: transform 0.02s;
+            transform: scale(0.96);
+            transition: transform 0.05s;
         }
 
         .glass {
@@ -36,11 +35,6 @@
             -webkit-user-select: none;
         }
 
-        /* Smooth scroll for history */
-        #modalContent {
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        }
         #modalContent::-webkit-scrollbar {
             display: none;
         }
@@ -50,11 +44,17 @@
 
     <!-- Header & Controls -->
     <header class="p-4 flex flex-col gap-4 z-10 bg-slate-950/80 backdrop-blur-md border-b border-white/5">
-        <div class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
-                <i data-lucide="hash" class="w-5 h-5 text-slate-950"></i>
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
+                    <i data-lucide="hash" class="w-5 h-5 text-slate-950"></i>
+                </div>
+                <h1 class="font-semibold text-lg tracking-tight">Tasbeeh Counter</h1>
             </div>
-            <h1 class="font-semibold text-lg tracking-tight">Tasbeeh Counter</h1>
+            <div id="userBadge" class="text-[10px] bg-emerald-500/20 px-2 py-1 rounded-full text-emerald-400 font-bold hidden border border-emerald-500/30 cursor-pointer hover:bg-emerald-500/30 transition-colors flex items-center gap-1">
+                <span id="badgeName"></span>
+                <i data-lucide="user-round-pen" class="w-3 h-3"></i>
+            </div>
         </div>
 
         <!-- Control Buttons -->
@@ -71,7 +71,7 @@
                 <i data-lucide="history" class="w-4 h-4 text-purple-400"></i>
                 <span class="text-[10px] font-medium">History</span>
             </button>
-            <button id="finishBtn" class="glass p-2 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-colors">
+            <button id="finishBtn" class="glass p-2 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-colors border-emerald-500/50">
                 <i data-lucide="save" class="w-4 h-4 text-emerald-400"></i>
                 <span class="text-[10px] font-medium leading-tight">Save</span>
             </button>
@@ -85,18 +85,17 @@
         </div>
 
         <div class="text-center z-10 pointer-events-none flex flex-col items-center gap-2">
-            <span id="labelDisplay" class="text-emerald-400 text-sm font-semibold tracking-widest uppercase block">Loading...</span>
+            <span id="labelDisplay" class="text-emerald-400 text-sm font-semibold tracking-widest uppercase block">Ya Allah</span>
             <h2 id="counterDisplay" class="text-8xl md:text-9xl font-extrabold counter-glow leading-none">0</h2>
             
             <div class="flex flex-col items-center gap-3">
                 <div class="flex flex-col items-center">
-                    <p id="targetDisplay" class="text-slate-500 font-medium text-sm">Target: --</p>
+                    <p id="targetDisplay" class="text-slate-500 font-medium text-sm">Target: 1000</p>
                     <div id="progressBar" class="w-32 h-1 bg-slate-800 rounded-full overflow-hidden mt-1">
                         <div id="progressFill" class="h-full bg-emerald-500 transition-all duration-300" style="width: 0%"></div>
                     </div>
                 </div>
                 
-                <!-- Moved hint message closer to the center to avoid bottom overlap -->
                 <div class="text-slate-500 text-[10px] uppercase tracking-widest animate-pulse mt-4">
                     Tap anywhere to count
                 </div>
@@ -104,7 +103,7 @@
         </div>
     </main>
 
-    <!-- Overlay: Presets & History -->
+    <!-- Main Modal Overlay -->
     <div id="modalOverlay" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-4">
         <div class="bg-slate-900 w-full max-w-md rounded-3xl p-6 shadow-2xl border border-white/10">
             <div class="flex justify-between items-center mb-6">
@@ -115,14 +114,37 @@
         </div>
     </div>
 
+    <!-- Name Entry Modal -->
+    <div id="nameModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] hidden flex items-center justify-center p-6">
+        <div class="bg-slate-900 w-full max-w-sm rounded-3xl p-8 border border-emerald-500/30 shadow-2xl">
+            <h3 class="text-2xl font-bold text-center mb-2 text-emerald-400">Tasbeeh Tag</h3>
+            <p class="text-slate-400 text-sm text-center mb-6">Enter the name of the person performing this Tasbeeh.</p>
+            <input type="text" id="nameInput" placeholder="Enter name" class="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-4 text-white focus:border-emerald-500 outline-none transition-all text-center mb-4">
+            <button id="saveNameBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl transition-all">Save & Finish</button>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-6">
+        <div class="bg-slate-900 w-full max-w-xs rounded-3xl p-6 border border-white/10 text-center">
+            <h3 id="confirmTitle" class="text-lg font-bold mb-2">Reset Counter?</h3>
+            <p id="confirmText" class="text-slate-400 text-sm mb-6">This action cannot be undone.</p>
+            <div class="flex gap-3">
+                <button id="confirmCancel" class="flex-1 bg-white/5 hover:bg-white/10 py-3 rounded-xl transition-all">Cancel</button>
+                <button id="confirmAction" class="flex-1 bg-red-600 hover:bg-red-500 py-3 rounded-xl transition-all">Reset</button>
+            </div>
+        </div>
+    </div>
+
     <div id="vibrationFlash" class="fixed inset-0 bg-emerald-500/10 pointer-events-none opacity-0 transition-opacity duration-150"></div>
 
     <script>
-        // State Management using LocalStorage
+        // State
         let state = {
             count: 0,
             target: 1000,
             label: "Ya Allah",
+            userName: "", // This tracks the CURRENT session name
             history: []
         };
 
@@ -136,25 +158,31 @@
             { label: "Astagfirullah", target: 1000 }
         ];
 
-        // UI Elements
+        // UI Helpers
         const counterDisplay = document.getElementById('counterDisplay');
         const tapArea = document.getElementById('tapArea');
         const labelDisplay = document.getElementById('labelDisplay');
         const targetDisplay = document.getElementById('targetDisplay');
         const progressFill = document.getElementById('progressFill');
         const flash = document.getElementById('vibrationFlash');
+        const userBadge = document.getElementById('userBadge');
+        const badgeName = document.getElementById('badgeName');
+        
+        // Modals
+        const mainModal = document.getElementById('modalOverlay');
+        const nameModal = document.getElementById('nameModal');
+        const confirmModal = document.getElementById('confirmModal');
 
-        // SAVE TO LOCAL STORAGE
         function saveData() {
             localStorage.setItem('tasbeeh_state', JSON.stringify({
                 count: state.count,
                 target: state.target,
-                label: state.label
+                label: state.label,
+                userName: state.userName
             }));
             localStorage.setItem('tasbeeh_history', JSON.stringify(state.history));
         }
 
-        // LOAD FROM LOCAL STORAGE
         function loadData() {
             const savedState = localStorage.getItem('tasbeeh_state');
             const savedHistory = localStorage.getItem('tasbeeh_history');
@@ -164,8 +192,8 @@
                 state.count = parsed.count || 0;
                 state.target = parsed.target || 1000;
                 state.label = parsed.label || "Ya Allah";
+                state.userName = parsed.userName || "";
             }
-            
             if (savedHistory) {
                 state.history = JSON.parse(savedHistory);
             }
@@ -175,25 +203,20 @@
             counterDisplay.innerText = state.count;
             labelDisplay.innerText = state.label;
             
-            if (state.target > 0) {
-                targetDisplay.innerText = `Target: ${state.target}`;
-                const percent = Math.min((state.count / state.target) * 100, 100);
-                progressFill.style.width = `${percent}%`;
-                if (state.count >= state.target) {
-                    progressFill.classList.add('bg-orange-400');
-                    progressFill.classList.remove('bg-emerald-500');
-                } else {
-                    progressFill.classList.add('bg-emerald-500');
-                    progressFill.classList.remove('bg-orange-400');
-                }
+            if (state.userName) {
+                badgeName.innerText = state.userName;
+                userBadge.classList.remove('hidden');
+            } else {
+                userBadge.classList.add('hidden');
             }
+
+            const percent = Math.min((state.count / state.target) * 100, 100);
+            progressFill.style.width = `${percent}%`;
+            targetDisplay.innerText = `Target: ${state.target}`;
         }
 
-        function triggerHaptic(type = 'milestone') {
-            if (navigator.vibrate) {
-                type === 'target' ? navigator.vibrate([100, 50, 100]) : navigator.vibrate(60);
-            }
-            // Visual feedback
+        function triggerHaptic() {
+            if (navigator.vibrate) navigator.vibrate(50);
             flash.style.opacity = '1';
             setTimeout(() => flash.style.opacity = '0', 80);
         }
@@ -203,167 +226,172 @@
                 e.preventDefault();
                 e.stopPropagation();
             }
-            
             state.count++;
-            
-            if (state.target > 0 && state.count === state.target) {
-                triggerHaptic('target');
-            } else if (state.count % 100 === 0) {
-                triggerHaptic('milestone');
-            }
-            
+            if (state.count % 100 === 0 || state.count === state.target) triggerHaptic();
             updateUI();
             saveData();
         }
 
-        function logFinalSession() {
+        function openConfirm(title, text, actionLabel, onConfirm) {
+            document.getElementById('confirmTitle').innerText = title;
+            document.getElementById('confirmText').innerText = text;
+            const confirmBtn = document.getElementById('confirmAction');
+            confirmBtn.innerText = actionLabel;
+            confirmBtn.onclick = () => {
+                onConfirm();
+                confirmModal.classList.add('hidden');
+            };
+            confirmModal.classList.remove('hidden');
+        }
+
+        function startSaveFlow() {
             if (state.count === 0) return;
-            
+
+            // NEW LOGIC: Always ask for name IF current session has no name.
+            // If it was continued from history, it will have a state.userName already.
+            if (!state.userName) {
+                document.getElementById('nameInput').value = "";
+                nameModal.classList.remove('hidden');
+                return;
+            }
+
+            saveSession();
+        }
+
+        function saveSession() {
             const session = {
                 label: state.label,
                 count: state.count,
                 target: state.target,
+                userName: state.userName || "Guest",
                 date: new Date().toLocaleString(),
                 id: Date.now()
             };
-
             state.history.unshift(session);
             state.count = 0;
-            
+            state.userName = ""; // Reset current user name for the next new session
             updateUI();
             saveData();
-            showToast("Saved to History");
+            showToast(`Saved for ${session.userName}`);
         }
 
         function showToast(msg) {
-            const existing = document.querySelector('.toast-msg');
-            if (existing) existing.remove();
             const toast = document.createElement('div');
-            toast.className = 'toast-msg fixed bottom-12 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-2 rounded-full font-medium shadow-lg z-[100] transition-opacity';
+            toast.className = 'fixed bottom-12 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-2 rounded-full font-medium shadow-lg z-[100]';
             toast.innerText = msg;
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 2500);
         }
 
-        window.continueTasbeeh = (id) => {
-            const itemIndex = state.history.findIndex(h => h.id === id);
-            if (itemIndex !== -1) {
-                const item = state.history[itemIndex];
-                state.label = item.label;
-                state.count = item.count;
-                state.target = item.target || 1000;
-                state.history.splice(itemIndex, 1);
-                updateUI();
-                saveData();
-                modal.classList.add('hidden');
-                showToast(`Resumed: ${state.label}`);
-            }
-        };
-
-        window.deleteHistoryItem = (id) => {
-            state.history = state.history.filter(h => h.id !== id);
-            saveData();
-            openModal('history'); 
-        };
-
-        const modal = document.getElementById('modalOverlay');
-        const modalContent = document.getElementById('modalContent');
-        const modalTitle = document.getElementById('modalTitle');
-
         function openModal(type) {
-            modal.classList.remove('hidden');
-            modalContent.innerHTML = '';
+            mainModal.classList.remove('hidden');
+            const content = document.getElementById('modalContent');
+            content.innerHTML = '';
             
             if (type === 'presets') {
-                modalTitle.innerText = "Select Tasbeeh";
+                document.getElementById('modalTitle').innerText = "Select Tasbeeh";
                 presets.forEach(p => {
                     const btn = document.createElement('button');
-                    btn.className = 'w-full text-left p-4 glass rounded-xl hover:bg-white/10 flex justify-between items-center';
-                    btn.innerHTML = `<div><div class="font-bold">${p.label}</div><div class="text-xs text-slate-400">Target: ${p.target}</div></div><i data-lucide="chevron-right" class="w-4 h-4 text-slate-500"></i>`;
+                    btn.className = 'w-full text-left p-4 glass rounded-xl flex justify-between items-center';
+                    btn.innerHTML = `<div><div class="font-bold">${p.label}</div><div class="text-xs text-slate-400">Target: ${p.target}</div></div><i data-lucide="chevron-right" class="w-4 h-4"></i>`;
                     btn.onclick = () => {
                         state.label = p.label;
                         state.target = p.target;
                         state.count = 0;
+                        state.userName = ""; // Start fresh name flow for new preset
                         updateUI();
                         saveData();
-                        modal.classList.add('hidden');
-                        lucide.createIcons();
+                        mainModal.classList.add('hidden');
                     };
-                    modalContent.appendChild(btn);
+                    content.appendChild(btn);
                 });
-            } else if (type === 'history') {
-                modalTitle.innerText = "History";
+            } else {
+                document.getElementById('modalTitle').innerText = "History";
                 if (state.history.length === 0) {
-                    modalContent.innerHTML = '<p class="text-center text-slate-500 py-8">No saved sessions yet.</p>';
+                    content.innerHTML = '<p class="text-center text-slate-500 py-8">No saved sessions.</p>';
                 } else {
                     state.history.forEach(h => {
                         const div = document.createElement('div');
-                        div.className = 'p-4 glass rounded-xl flex flex-col gap-3 mb-2';
+                        div.className = 'p-4 glass rounded-xl mb-2 flex flex-col gap-2';
                         div.innerHTML = `
-                            <div class="flex justify-between items-start">
+                            <div class="flex justify-between items-center">
                                 <div>
-                                    <div class="font-bold text-lg">${h.label}</div>
-                                    <div class="text-[10px] text-slate-400">${h.date}</div>
+                                    <div class="font-bold text-sm">${h.label}</div>
+                                    <div class="text-[10px] text-emerald-400 font-bold uppercase tracking-wide">${h.userName || 'Guest'}</div>
+                                    <div class="text-[10px] text-slate-500">${h.date}</div>
                                 </div>
-                                <div class="text-2xl font-bold text-emerald-400">${h.count}</div>
+                                <div class="text-xl font-black text-emerald-400">${h.count}</div>
                             </div>
                             <div class="flex gap-2">
-                                <button onclick="continueTasbeeh(${h.id})" class="flex-grow bg-emerald-600/20 text-emerald-400 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 hover:bg-emerald-600/30 transition-colors">
-                                    <i data-lucide="play-circle" class="w-4 h-4"></i> Continue
-                                </button>
-                                <button onclick="deleteHistoryItem(${h.id})" class="px-3 bg-red-500/10 text-red-400 py-2 rounded-lg transition-colors hover:bg-red-500/20">
-                                    <i data-lucide="trash-2" class="w-4 h-4 text-red-400"></i>
-                                </button>
+                                <button onclick="resumeItem(${h.id})" class="flex-grow bg-emerald-600/20 text-emerald-400 py-2 rounded-lg text-xs font-bold">Continue</button>
+                                <button onclick="deleteItem(${h.id})" class="px-3 bg-red-500/10 text-red-400 py-2 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                             </div>
                         `;
-                        modalContent.appendChild(div);
+                        content.appendChild(div);
                     });
-                    
-                    const clearBtn = document.createElement('button');
-                    clearBtn.className = 'w-full mt-4 text-slate-500 text-xs py-2 hover:text-red-400 transition-colors';
-                    clearBtn.innerText = "Clear History";
-                    clearBtn.onclick = () => {
-                        if(confirm("Delete all history?")) {
-                            state.history = [];
-                            saveData();
-                            openModal('history');
-                        }
-                    };
-                    modalContent.appendChild(clearBtn);
                 }
             }
             lucide.createIcons();
         }
 
-        function initApp() {
-            loadData();
-            updateUI();
-            lucide.createIcons();
+        window.resumeItem = (id) => {
+            const item = state.history.find(h => h.id === id);
+            if (item) {
+                state.label = item.label;
+                state.count = item.count;
+                state.target = item.target;
+                state.userName = item.userName || ""; // Keep the existing name
+                state.history = state.history.filter(h => h.id !== id);
+                updateUI();
+                saveData();
+                mainModal.classList.add('hidden');
+                showToast(`Resumed for ${state.userName || 'Guest'}`);
+            }
+        };
+
+        window.deleteItem = (id) => {
+            state.history = state.history.filter(h => h.id !== id);
+            saveData();
+            openModal('history');
         }
 
-        tapArea.onpointerdown = (e) => {
-            if (!e.target.closest('button')) {
-                increment(e);
-            }
+        // Events
+        document.getElementById('saveNameBtn').onclick = () => {
+            const input = document.getElementById('nameInput');
+            const name = input.value.trim() || "Guest";
+            state.userName = name;
+            nameModal.classList.add('hidden');
+            updateUI();
+            saveData();
+            if (state.count > 0) saveSession();
         };
 
-        document.getElementById('resetBtn').onclick = () => { 
-            if(confirm("Reset current count?")) {
-                state.count = 0; 
-                updateUI(); 
+        document.getElementById('resetBtn').onclick = () => {
+            openConfirm("Reset Counter?", "Clear current progress? This will start a new session.", "Reset", () => {
+                state.count = 0;
+                state.userName = ""; // Reset user for a fresh count
+                updateUI();
                 saveData();
-            }
+            });
         };
+
+        userBadge.onclick = () => {
+            document.getElementById('nameInput').value = state.userName;
+            nameModal.classList.remove('hidden');
+        };
+
+        document.getElementById('finishBtn').onclick = startSaveFlow;
         document.getElementById('presetBtn').onclick = () => openModal('presets');
         document.getElementById('historyBtn').onclick = () => openModal('history');
-        document.getElementById('finishBtn').onclick = logFinalSession;
-        document.getElementById('closeModal').onclick = () => modal.classList.add('hidden');
+        document.getElementById('closeModal').onclick = () => mainModal.classList.add('hidden');
+        document.getElementById('confirmCancel').onclick = () => confirmModal.classList.add('hidden');
         
-        tapArea.addEventListener('touchstart', (e) => {
-            if (e.touches.length > 1) e.preventDefault();
-        }, { passive: false });
+        tapArea.onpointerdown = increment;
 
-        initApp();
+        // Init
+        loadData();
+        updateUI();
+        lucide.createIcons();
     </script>
 </body>
 </html>
