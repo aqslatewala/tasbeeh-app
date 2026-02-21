@@ -34,6 +34,15 @@
             user-select: none;
             -webkit-user-select: none;
         }
+
+        /* Smooth scroll for history */
+        #modalContent {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        #modalContent::-webkit-scrollbar {
+            display: none;
+        }
     </style>
 </head>
 <body class="bg-slate-950 text-white min-h-screen overflow-hidden flex flex-col">
@@ -104,39 +113,12 @@
 
     <div id="vibrationFlash" class="fixed inset-0 bg-emerald-500/10 pointer-events-none opacity-0 transition-opacity duration-150"></div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Global Variable Fallbacks for Deployment
-        let firebaseConfig;
-        try {
-            firebaseConfig = JSON.parse(__firebase_config);
-        } catch (e) {
-            console.warn("Firebase config not found in environment. Using local placeholder.");
-            // If you are deploying to GitHub, you would replace this with your actual Firebase config object
-            firebaseConfig = {
-                apiKey: "", 
-                authDomain: "",
-                projectId: "",
-                storageBucket: "",
-                messagingSenderId: "",
-                appId: ""
-            };
-        }
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'tasbeeh-app-prod';
-
-        // State (Local memory for maximum performance)
+    <script>
+        // State Management using LocalStorage
         let state = {
             count: 0,
-            target: 100,
+            target: 1000,
             label: "Ya Allah",
-            user: null,
             history: []
         };
 
@@ -153,11 +135,37 @@
         // UI Elements
         const counterDisplay = document.getElementById('counterDisplay');
         const tapArea = document.getElementById('tapArea');
-        const resetBtn = document.getElementById('resetBtn');
-        const progressFill = document.getElementById('progressFill');
         const labelDisplay = document.getElementById('labelDisplay');
         const targetDisplay = document.getElementById('targetDisplay');
+        const progressFill = document.getElementById('progressFill');
         const flash = document.getElementById('vibrationFlash');
+
+        // SAVE TO LOCAL STORAGE
+        function saveData() {
+            localStorage.setItem('tasbeeh_state', JSON.stringify({
+                count: state.count,
+                target: state.target,
+                label: state.label
+            }));
+            localStorage.setItem('tasbeeh_history', JSON.stringify(state.history));
+        }
+
+        // LOAD FROM LOCAL STORAGE
+        function loadData() {
+            const savedState = localStorage.getItem('tasbeeh_state');
+            const savedHistory = localStorage.getItem('tasbeeh_history');
+            
+            if (savedState) {
+                const parsed = JSON.parse(savedState);
+                state.count = parsed.count || 0;
+                state.target = parsed.target || 1000;
+                state.label = parsed.label || "Ya Allah";
+            }
+            
+            if (savedHistory) {
+                state.history = JSON.parse(savedHistory);
+            }
+        }
 
         function updateUI() {
             counterDisplay.innerText = state.count;
@@ -168,13 +176,12 @@
                 const percent = Math.min((state.count / state.target) * 100, 100);
                 progressFill.style.width = `${percent}%`;
                 if (state.count >= state.target) {
-                    progressFill.classList.replace('bg-emerald-500', 'bg-orange-400');
+                    progressFill.classList.add('bg-orange-400');
+                    progressFill.classList.remove('bg-emerald-500');
                 } else {
-                    progressFill.classList.replace('bg-orange-400', 'bg-emerald-500');
+                    progressFill.classList.add('bg-emerald-500');
+                    progressFill.classList.remove('bg-orange-400');
                 }
-            } else {
-                targetDisplay.innerText = "No Target";
-                progressFill.style.width = "0%";
             }
         }
 
@@ -194,43 +201,30 @@
                 triggerHaptic('tap');
             }
             updateUI();
+            saveData(); // Save progress on every tap (local storage is extremely fast)
         }
 
-        async function logFinalSession() {
-            if (!state.user || state.count === 0) return;
+        function logFinalSession() {
+            if (state.count === 0) return;
             
-            // If config is missing, alert the user but don't crash
-            if (!firebaseConfig.apiKey) {
-                showToast("Firebase Config Missing - Set it up in the code!");
-                return;
-            }
+            const session = {
+                label: state.label,
+                count: state.count,
+                date: new Date().toLocaleString(),
+                id: Date.now()
+            };
 
-            const originalCount = state.count;
-            const originalLabel = state.label;
-            
+            state.history.unshift(session);
             state.count = 0;
+            
             updateUI();
-            showToast("Logging session...");
-
-            try {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'history'), {
-                    userId: state.user.uid,
-                    label: originalLabel,
-                    count: originalCount,
-                    target: state.target,
-                    timestamp: serverTimestamp()
-                });
-                showToast("Tasbeeh Saved Successfully");
-            } catch (err) {
-                console.error("Logging failed", err);
-                showToast("Error saving session");
-            }
+            saveData();
+            showToast("Logged to History");
         }
 
         function showToast(msg) {
             const existing = document.querySelector('.toast-msg');
             if (existing) existing.remove();
-
             const toast = document.createElement('div');
             toast.className = 'toast-msg fixed bottom-24 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-2 rounded-full font-medium shadow-lg z-[100] transition-opacity';
             toast.innerText = msg;
@@ -238,7 +232,6 @@
             setTimeout(() => toast.remove(), 2500);
         }
 
-        // Modal Logic
         const modal = document.getElementById('modalOverlay');
         const modalContent = document.getElementById('modalContent');
         const modalTitle = document.getElementById('modalTitle');
@@ -258,6 +251,7 @@
                         state.target = p.target;
                         state.count = 0;
                         updateUI();
+                        saveData();
                         modal.classList.add('hidden');
                         lucide.createIcons();
                     };
@@ -265,82 +259,59 @@
                 });
             } else if (type === 'history') {
                 modalTitle.innerText = "History";
-                if (!firebaseConfig.apiKey) {
-                    modalContent.innerHTML = '<p class="text-center text-slate-500 py-8">Cloud features require Firebase configuration.</p>';
-                } else if (state.history.length === 0) {
+                if (state.history.length === 0) {
                     modalContent.innerHTML = '<p class="text-center text-slate-500 py-8">No logged sessions yet.</p>';
                 } else {
                     state.history.forEach(h => {
                         const div = document.createElement('div');
                         div.className = 'p-4 glass rounded-xl flex justify-between items-center mb-2';
-                        div.innerHTML = `<div><div class="font-bold">${h.label}</div><div class="text-xs text-slate-400">${h.timestamp ? new Date(h.timestamp.seconds * 1000).toLocaleDateString() : 'Just now'}</div></div><div class="text-xl font-bold text-emerald-400">${h.count}</div>`;
+                        div.innerHTML = `<div><div class="font-bold">${h.label}</div><div class="text-[10px] text-slate-400">${h.date}</div></div><div class="text-xl font-bold text-emerald-400">${h.count}</div>`;
                         modalContent.appendChild(div);
                     });
+                    
+                    // Add Clear History option
+                    const clearBtn = document.createElement('button');
+                    clearBtn.className = 'w-full mt-4 text-slate-500 text-xs py-2 hover:text-red-400 transition-colors';
+                    clearBtn.innerText = "Clear History";
+                    clearBtn.onclick = () => {
+                        if(confirm("Delete all history?")) {
+                            state.history = [];
+                            saveData();
+                            openModal('history');
+                        }
+                    };
+                    modalContent.appendChild(clearBtn);
                 }
             }
             lucide.createIcons();
         }
 
-        const init = async () => {
-            if (!firebaseConfig.apiKey) {
-                console.warn("App running in local mode. History/Logging disabled.");
-                labelDisplay.innerText = state.label;
-                updateUI();
-                lucide.createIcons();
-                return;
-            }
-
-            const initAuth = async () => {
-                try {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                } catch (e) {
-                    console.error("Auth init failed", e);
-                }
-            };
-            
-            await initAuth();
-
-            onAuthStateChanged(auth, async (user) => {
-                state.user = user;
-                if (user) {
-                    updateUI();
-                    const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'history'));
-                    onSnapshot(q, (snapshot) => {
-                        state.history = snapshot.docs
-                            .map(doc => doc.data())
-                            .filter(d => d.userId === user.uid)
-                            .sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-                    }, (err) => console.error(err));
-                }
-            });
-
-            lucide.createIcons();
-        };
-
-        // UI Event Listeners
-        tapArea.onclick = (e) => {
-            if (e.target.closest('button')) return;
-            increment();
-        };
-
-        resetBtn.onclick = () => {
-            state.count = 0;
+        // INITIALIZATION
+        function initApp() {
+            loadData();
             updateUI();
+            lucide.createIcons();
+        }
+
+        tapArea.onclick = (e) => { if (!e.target.closest('button')) increment(); };
+        document.getElementById('resetBtn').onclick = () => { 
+            if(confirm("Reset current count?")) {
+                state.count = 0; 
+                updateUI(); 
+                saveData();
+            }
         };
-        presetBtn.onclick = () => openModal('presets');
-        historyBtn.onclick = () => openModal('history');
-        finishBtn.onclick = logFinalSession;
+        document.getElementById('presetBtn').onclick = () => openModal('presets');
+        document.getElementById('historyBtn').onclick = () => openModal('history');
+        document.getElementById('finishBtn').onclick = logFinalSession;
         document.getElementById('closeModal').onclick = () => modal.classList.add('hidden');
         
+        // Prevent zoom
         tapArea.addEventListener('touchstart', (e) => {
             if (e.touches.length > 1) e.preventDefault();
         }, { passive: false });
 
-        init();
+        initApp();
     </script>
 </body>
 </html>
