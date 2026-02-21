@@ -19,9 +19,10 @@
             text-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
         }
 
+        /* Faster scaling animation for rapid taps */
         .tap-active:active {
-            transform: scale(0.96);
-            transition: transform 0.05s;
+            transform: scale(0.94);
+            transition: transform 0.02s;
         }
 
         .glass {
@@ -63,7 +64,7 @@
             <div class="w-72 h-72 border-8 border-emerald-500 rounded-full"></div>
         </div>
 
-        <div class="text-center z-10">
+        <div class="text-center z-10 pointer-events-none">
             <span id="labelDisplay" class="text-emerald-400 text-sm font-semibold tracking-widest uppercase mb-2 block">Loading...</span>
             <h2 id="counterDisplay" class="text-8xl md:text-9xl font-extrabold counter-glow">0</h2>
             <div class="mt-4 flex flex-col items-center gap-2">
@@ -74,7 +75,7 @@
             </div>
         </div>
 
-        <div class="absolute bottom-12 text-slate-400 text-sm animate-pulse">
+        <div class="absolute bottom-12 text-slate-400 text-sm animate-pulse pointer-events-none">
             Tap anywhere to count
         </div>
     </main>
@@ -194,7 +195,13 @@
             setTimeout(() => flash.style.opacity = '0', 80);
         }
 
-        function increment() {
+        function increment(e) {
+            // Prevent event from bubbling or being treated as a click after pointerdown
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
             state.count++;
             
             // Check for vibration conditions
@@ -338,7 +345,13 @@
             lucide.createIcons();
         }
 
-        tapArea.onclick = (e) => { if (!e.target.closest('button')) increment(); };
+        // Use pointerdown for instant responsiveness
+        tapArea.onpointerdown = (e) => {
+            if (!e.target.closest('button')) {
+                increment(e);
+            }
+        };
+
         document.getElementById('resetBtn').onclick = () => { 
             if(confirm("Reset current count?")) {
                 state.count = 0; 
@@ -351,6 +364,7 @@
         document.getElementById('finishBtn').onclick = logFinalSession;
         document.getElementById('closeModal').onclick = () => modal.classList.add('hidden');
         
+        // Prevent default touch behaviors like scrolling while tapping
         tapArea.addEventListener('touchstart', (e) => {
             if (e.touches.length > 1) e.preventDefault();
         }, { passive: false });
