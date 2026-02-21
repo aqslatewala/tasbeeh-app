@@ -307,22 +307,22 @@
 
     <!-- Name Entry Modal -->
     <div id="nameModal" class="modal-base hidden">
-        <div class="bg-slate-900 w-full max-sm rounded-3xl p-8 border border-primary-fade shadow-2xl">
-            <h3 class="text-2xl font-bold text-center mb-2 text-primary">Tasbeeh Tag</h3>
-            <p class="text-slate-400 text-sm text-center mb-6">Enter the name of the person performing this Tasbeeh.</p>
-            <input type="text" id="nameInput" placeholder="Enter name" class="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-4 text-white focus:border-primary outline-none transition-all text-center mb-4">
-            <button id="saveNameBtn" class="w-full bg-primary hover:opacity-90 text-slate-950 font-bold py-4 rounded-xl transition-all">Save & Finish</button>
+        <div class="bg-slate-900 w-full max-w-xs rounded-3xl p-6 border border-primary-fade shadow-2xl">
+            <h3 class="text-xl font-bold text-center mb-2 text-primary">Tasbeeh Tag</h3>
+            <p class="text-slate-400 text-xs text-center mb-4">Enter the person's name.</p>
+            <input type="text" id="nameInput" placeholder="Enter name" class="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-primary outline-none transition-all text-center mb-4">
+            <button id="saveNameBtn" class="w-full bg-primary hover:opacity-90 text-slate-950 font-bold py-3 rounded-xl transition-all">Save & Finish</button>
         </div>
     </div>
 
     <!-- Confirm Modal -->
     <div id="confirmModal" class="modal-base hidden">
-        <div class="bg-slate-900 w-full max-xs rounded-3xl p-6 border border-white/10 text-center shadow-2xl">
-            <h3 id="confirmTitle" class="text-lg font-bold mb-2 text-white">Reset Counter?</h3>
-            <p id="confirmText" class="text-slate-400 text-sm mb-6">This action cannot be undone.</p>
-            <div class="flex gap-3">
-                <button id="confirmCancel" class="flex-1 bg-white/5 hover:bg-white/10 py-3 rounded-xl transition-all text-white font-medium">Cancel</button>
-                <button id="confirmAction" class="flex-1 bg-red-600 hover:bg-red-500 py-3 rounded-xl transition-all text-white font-bold">Reset</button>
+        <div class="bg-slate-900 w-full max-w-xs rounded-3xl p-5 border border-white/10 text-center shadow-2xl">
+            <h3 id="confirmTitle" class="text-base font-bold mb-1 text-white">Reset Counter?</h3>
+            <p id="confirmText" class="text-slate-400 text-xs mb-4">This action cannot be undone.</p>
+            <div class="flex gap-2">
+                <button id="confirmCancel" class="flex-1 bg-white/5 hover:bg-white/10 py-2 rounded-xl transition-all text-white font-medium text-sm">Cancel</button>
+                <button id="confirmAction" class="flex-1 bg-red-600 hover:bg-red-500 py-2 rounded-xl transition-all text-white font-bold text-sm">Reset</button>
             </div>
         </div>
     </div>
