@@ -15,8 +15,58 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* Dynamic Theme Classes */
+        .theme-emerald { --primary-rgb: 16, 185, 129; --primary-hex: #10b981; }
+        .theme-ruby { --primary-rgb: 225, 29, 72; --primary-hex: #e11d48; }
+        .theme-sapphire { --primary-rgb: 37, 99, 235; --primary-hex: #2563eb; }
+        .theme-amber { --primary-rgb: 245, 158, 11; --primary-hex: #f59e0b; }
+        .theme-rose { --primary-rgb: 219, 39, 119; --primary-hex: #db2677; }
+
+        .text-primary { color: var(--primary-hex); }
+        .bg-primary { background-color: var(--primary-hex); }
+        .border-primary { border-color: var(--primary-hex); }
+        .bg-primary-fade { background-color: rgba(var(--primary-rgb), 0.1); }
+        .border-primary-fade { border-color: rgba(var(--primary-rgb), 0.2); }
+
+        /* Background Effects */
+        .bg-gradient-dynamic {
+            background: linear-gradient(to bottom, #0f172a, #020617);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dynamic-glow {
+            position: absolute;
+            width: 80vw;
+            height: 80vw;
+            background: radial-gradient(circle, rgba(var(--primary-rgb), 0.15) 0%, rgba(var(--primary-rgb), 0) 70%);
+            top: -10%;
+            right: -10%;
+            border-radius: 50%;
+            filter: blur(60px);
+            transition: background 1s ease;
+            pointer-events: none;
+            z-index: 0;
+            animation: drift 20s infinite alternate ease-in-out;
+        }
+
+        .bg-grid {
+            position: absolute;
+            inset: 0;
+            background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes drift {
+            from { transform: translate(0, 0); }
+            to { transform: translate(-10%, 10%); }
+        }
+
         .counter-glow {
-            text-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+            text-shadow: 0 0 20px rgba(var(--primary-rgb), 0.3);
         }
 
         .tap-active:active {
@@ -52,29 +102,36 @@
             content: '';
             position: absolute;
             inset: -4px;
-            border: 2px solid #10b981;
+            border: 2px solid var(--primary-hex);
             border-radius: inherit;
             animation: pulse-ring 1.5s infinite;
         }
     </style>
 </head>
-<body class="bg-slate-950 text-white min-h-screen overflow-hidden flex flex-col">
+<body id="appBody" class="bg-gradient-dynamic text-white min-h-screen overflow-hidden flex flex-col theme-emerald">
+    
+    <!-- Decorative Background Layers -->
+    <div class="bg-grid"></div>
+    <div class="dynamic-glow"></div>
 
     <!-- Header & Controls -->
-    <header class="p-4 flex flex-col gap-4 z-10 bg-slate-950/80 backdrop-blur-md border-b border-white/5">
+    <header class="p-4 flex flex-col gap-4 z-10 bg-slate-950/40 backdrop-blur-md border-b border-white/5">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-                <div class="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
+                <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center transition-colors duration-500">
                     <i data-lucide="hash" class="w-5 h-5 text-slate-950"></i>
                 </div>
                 <h1 class="font-semibold text-lg tracking-tight">Tasbeeh Counter</h1>
             </div>
             <div class="flex items-center gap-2">
-                <!-- Restart Tutorial Button -->
-                <button id="helpBtn" title="Show Tutorial" class="p-2 text-slate-500 hover:text-emerald-400 transition-colors">
+                <!-- Theme Switcher -->
+                <button id="themeBtn" title="Change Color" class="p-2 text-slate-400 hover:text-primary transition-colors">
+                    <i data-lucide="palette" class="w-5 h-5"></i>
+                </button>
+                <button id="helpBtn" title="Show Tutorial" class="p-2 text-slate-400 hover:text-primary transition-colors">
                     <i data-lucide="help-circle" class="w-5 h-5"></i>
                 </button>
-                <div id="userBadge" class="text-[10px] bg-emerald-500/20 px-2 py-1 rounded-full text-emerald-400 font-bold hidden border border-emerald-500/30 cursor-pointer hover:bg-emerald-500/30 transition-colors flex items-center gap-1">
+                <div id="userBadge" class="text-[10px] bg-primary-fade px-2 py-1 rounded-full text-primary font-bold hidden border border-primary-fade cursor-pointer transition-colors flex items-center gap-1">
                     <span id="badgeName"></span>
                     <i data-lucide="user-round-pen" class="w-3 h-3"></i>
                 </div>
@@ -95,32 +152,32 @@
                 <i data-lucide="history" class="w-4 h-4 text-purple-400"></i>
                 <span class="text-[10px] font-medium">History</span>
             </button>
-            <button id="finishBtn" class="glass p-2 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-colors border-emerald-500/50">
-                <i data-lucide="save" class="w-4 h-4 text-emerald-400"></i>
+            <button id="finishBtn" class="glass p-2 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-colors border-primary-fade">
+                <i data-lucide="save" class="w-4 h-4 text-primary"></i>
                 <span class="text-[10px] font-medium leading-tight">Save</span>
             </button>
         </div>
     </header>
 
     <!-- Main Interaction Area -->
-    <main id="tapArea" class="flex-grow flex flex-col items-center justify-center relative no-select tap-active cursor-pointer p-4">
+    <main id="tapArea" class="flex-grow flex flex-col items-center justify-center relative no-select tap-active cursor-pointer p-4 z-10">
         <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5">
-            <div class="w-64 h-64 border-4 border-emerald-500 rounded-full"></div>
+            <div class="w-64 h-64 border-4 border-primary rounded-full transition-colors duration-500"></div>
         </div>
 
         <div class="text-center z-10 pointer-events-none flex flex-col items-center gap-2">
-            <div id="labelContainer" class="pointer-events-auto cursor-pointer group flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/5 hover:border-emerald-500/50 transition-all">
-                <span id="labelDisplay" class="text-emerald-400 text-sm font-semibold tracking-widest uppercase block">Ya Allah</span>
-                <i data-lucide="pencil" class="w-3 h-3 text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+            <div id="labelContainer" class="pointer-events-auto cursor-pointer group flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/5 hover:border-primary-fade transition-all">
+                <span id="labelDisplay" class="text-primary text-sm font-semibold tracking-widest uppercase block transition-colors duration-500">Ya Allah</span>
+                <i data-lucide="pencil" class="w-3 h-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity"></i>
             </div>
             
-            <h2 id="counterDisplay" class="text-8xl md:text-9xl font-extrabold counter-glow leading-none">0</h2>
+            <h2 id="counterDisplay" class="text-8xl md:text-9xl font-extrabold counter-glow leading-none transition-all duration-500">0</h2>
             
             <div class="flex flex-col items-center gap-3">
                 <div class="flex flex-col items-center">
-                    <p id="targetDisplay" class="text-slate-500 font-medium text-sm">Target: 1000</p>
+                    <p id="targetDisplay" class="text-slate-400 font-medium text-sm">Target: 1000</p>
                     <div id="progressBar" class="w-32 h-1 bg-slate-800 rounded-full overflow-hidden mt-1">
-                        <div id="progressFill" class="h-full bg-emerald-500 transition-all duration-300" style="width: 0%"></div>
+                        <div id="progressFill" class="h-full bg-primary transition-all duration-300" style="width: 0%"></div>
                     </div>
                 </div>
                 
@@ -134,14 +191,14 @@
     <!-- Tutorial Overlay -->
     <div id="tutorialOverlay" class="fixed inset-0 bg-black/90 z-[100] hidden flex items-center justify-center p-6 backdrop-blur-md">
         <div class="max-w-xs w-full text-center">
-            <div id="tutorialIcon" class="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-400">
+            <div id="tutorialIcon" class="w-16 h-16 bg-primary-fade rounded-full flex items-center justify-center mx-auto mb-6 text-primary">
                 <i data-lucide="info" class="w-8 h-8"></i>
             </div>
             <h3 id="tutorialTitle" class="text-2xl font-bold mb-4">Welcome</h3>
             <div id="tutorialTextContainer" class="min-h-[80px]">
                 <p id="tutorialText" class="text-slate-400 mb-8 leading-relaxed">Let's walk through how to use your new Tasbeeh counter.</p>
             </div>
-            <button id="tutorialNext" class="w-full bg-emerald-600 hover:bg-emerald-500 py-4 rounded-2xl font-bold transition-all">Next</button>
+            <button id="tutorialNext" class="w-full bg-primary hover:opacity-90 py-4 rounded-2xl font-bold transition-all text-slate-950">Next</button>
             <button id="tutorialSkip" class="mt-4 text-slate-500 text-sm hover:text-white transition-colors">Skip Tutorial</button>
         </div>
     </div>
@@ -166,25 +223,25 @@
 
     <!-- Edit Tasbeeh Modal -->
     <div id="editTasbeehModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] hidden flex items-center justify-center p-6">
-        <div class="bg-slate-900 w-full max-w-sm rounded-3xl p-8 border border-emerald-500/30 shadow-2xl">
-            <h3 id="editTasbeehTitle" class="text-2xl font-bold text-center mb-2 text-emerald-400">Tasbeeh Details</h3>
+        <div class="bg-slate-900 w-full max-w-sm rounded-3xl p-8 border border-primary-fade shadow-2xl">
+            <h3 id="editTasbeehTitle" class="text-2xl font-bold text-center mb-2 text-primary">Tasbeeh Details</h3>
             <p id="editTasbeehSubtitle" class="text-slate-400 text-sm text-center mb-6">Set your name and target.</p>
-            <input type="text" id="tasbeehNameInput" placeholder="e.g. SubhanAllah" class="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-4 text-white focus:border-emerald-500 outline-none transition-all text-center mb-4">
+            <input type="text" id="tasbeehNameInput" placeholder="e.g. SubhanAllah" class="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-4 text-white focus:border-primary outline-none transition-all text-center mb-4">
             <div class="mb-4">
                 <label class="text-[10px] text-slate-500 uppercase tracking-widest block mb-2 text-center">Set Target</label>
-                <input type="number" id="tasbeehTargetInput" placeholder="1000" class="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-emerald-500 outline-none transition-all text-center">
+                <input type="number" id="tasbeehTargetInput" placeholder="1000" class="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-primary outline-none transition-all text-center">
             </div>
-            <button id="saveTasbeehBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl transition-all">Update Counter</button>
+            <button id="saveTasbeehBtn" class="w-full bg-primary hover:opacity-90 text-slate-950 font-bold py-4 rounded-xl transition-all">Update Counter</button>
         </div>
     </div>
 
     <!-- Name Entry Modal -->
     <div id="nameModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] hidden flex items-center justify-center p-6">
-        <div class="bg-slate-900 w-full max-w-sm rounded-3xl p-8 border border-emerald-500/30 shadow-2xl">
-            <h3 class="text-2xl font-bold text-center mb-2 text-emerald-400">Tasbeeh Tag</h3>
+        <div class="bg-slate-900 w-full max-w-sm rounded-3xl p-8 border border-primary-fade shadow-2xl">
+            <h3 class="text-2xl font-bold text-center mb-2 text-primary">Tasbeeh Tag</h3>
             <p class="text-slate-400 text-sm text-center mb-6">Enter the name of the person performing this Tasbeeh.</p>
-            <input type="text" id="nameInput" placeholder="Enter name" class="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-4 text-white focus:border-emerald-500 outline-none transition-all text-center mb-4">
-            <button id="saveNameBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl transition-all">Save & Finish</button>
+            <input type="text" id="nameInput" placeholder="Enter name" class="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-4 text-white focus:border-primary outline-none transition-all text-center mb-4">
+            <button id="saveNameBtn" class="w-full bg-primary hover:opacity-90 text-slate-950 font-bold py-4 rounded-xl transition-all">Save & Finish</button>
         </div>
     </div>
 
@@ -200,7 +257,7 @@
         </div>
     </div>
 
-    <div id="vibrationFlash" class="fixed inset-0 bg-emerald-500/10 pointer-events-none opacity-0 transition-opacity duration-150"></div>
+    <div id="vibrationFlash" class="fixed inset-0 bg-primary-fade pointer-events-none opacity-0 transition-opacity duration-150"></div>
 
     <script>
         // State
@@ -214,6 +271,14 @@
             { label: "Astagfirullah", target: 1000 }
         ];
 
+        const THEMES = [
+            { id: 'emerald', label: 'Emerald', class: 'theme-emerald' },
+            { id: 'ruby', label: 'Ruby', class: 'theme-ruby' },
+            { id: 'sapphire', label: 'Sapphire', class: 'theme-sapphire' },
+            { id: 'amber', label: 'Amber', class: 'theme-amber' },
+            { id: 'rose', label: 'Rose', class: 'theme-rose' }
+        ];
+
         let state = {
             count: 0,
             target: 1000,
@@ -221,6 +286,7 @@
             userName: "", 
             history: [],
             presets: [...DEFAULT_PRESETS],
+            currentTheme: 'emerald',
             isEditingPresets: false,
             tutorialStep: 0,
             tutorialCompleted: false
@@ -237,6 +303,8 @@
         const badgeName = document.getElementById('badgeName');
         const labelContainer = document.getElementById('labelContainer');
         const helpBtn = document.getElementById('helpBtn');
+        const themeBtn = document.getElementById('themeBtn');
+        const appBody = document.getElementById('appBody');
         
         // Modals
         const mainModal = document.getElementById('modalOverlay');
@@ -246,19 +314,28 @@
         const tutorialOverlay = document.getElementById('tutorialOverlay');
 
         function saveData() {
-            localStorage.setItem('tasbeeh_state_v3', JSON.stringify({
+            localStorage.setItem('tasbeeh_state_v4', JSON.stringify({
                 count: state.count,
                 target: state.target,
                 label: state.label,
                 userName: state.userName,
                 presets: state.presets,
+                currentTheme: state.currentTheme,
                 tutorialCompleted: state.tutorialCompleted
             }));
             localStorage.setItem('tasbeeh_history', JSON.stringify(state.history));
         }
 
+        function applyTheme(themeId) {
+            state.currentTheme = themeId;
+            THEMES.forEach(t => appBody.classList.remove(t.class));
+            const theme = THEMES.find(t => t.id === themeId);
+            appBody.classList.add(theme.class);
+            saveData();
+        }
+
         function loadData() {
-            const savedState = localStorage.getItem('tasbeeh_state_v3');
+            const savedState = localStorage.getItem('tasbeeh_state_v4');
             const savedHistory = localStorage.getItem('tasbeeh_history');
             
             if (savedState) {
@@ -268,14 +345,15 @@
                 state.label = parsed.label || "Ya Allah";
                 state.userName = parsed.userName || "";
                 state.presets = parsed.presets || [...DEFAULT_PRESETS];
+                state.currentTheme = parsed.currentTheme || 'emerald';
                 state.tutorialCompleted = parsed.tutorialCompleted || false;
+                applyTheme(state.currentTheme);
             }
 
             if (savedHistory) {
                 state.history = JSON.parse(savedHistory);
             }
 
-            // Auto-trigger tutorial only once
             if (!state.tutorialCompleted) {
                 setTimeout(() => startTutorial(), 800);
             }
@@ -311,7 +389,7 @@
             saveData();
         }
 
-        // Tutorial Logic
+        // Tutorial Steps
         const tutorialSteps = [
             {
                 title: "Tap to Count",
@@ -320,20 +398,20 @@
                 highlight: "tapArea"
             },
             {
+                title: "Personalize Color",
+                text: "Tap the palette icon to choose a color that resonates with your heart.",
+                icon: "palette",
+                highlight: "themeBtn"
+            },
+            {
                 title: "Change Label",
                 text: "Tap the label above the counter to set a custom name and target for your current session.",
                 icon: "pencil",
                 highlight: "labelContainer"
             },
             {
-                title: "Quick Presets",
-                text: "Use the Presets button to quickly switch between common recitations or manage your list.",
-                icon: "list-music",
-                highlight: "presetBtn"
-            },
-            {
                 title: "Manage Presets",
-                text: "Inside the Presets menu, tap the Settings icon (top right) to add new custom presets or delete existing ones.",
+                text: "Inside the Presets menu, tap Settings to add new custom recitations or delete old ones.",
                 icon: "settings-2",
                 highlight: "presetBtn"
             },
@@ -376,12 +454,7 @@
         };
 
         document.getElementById('tutorialSkip').onclick = () => closeTutorial(true);
-        
-        // Manual Tutorial Trigger
-        helpBtn.onclick = (e) => {
-            e.stopPropagation();
-            startTutorial();
-        };
+        helpBtn.onclick = (e) => { e.stopPropagation(); startTutorial(); };
 
         function closeTutorial(markAsCompleted = false) {
             tutorialOverlay.classList.add('hidden');
@@ -404,16 +477,6 @@
             confirmModal.classList.remove('hidden');
         }
 
-        function startSaveFlow() {
-            if (state.count === 0) return;
-            if (!state.userName) {
-                document.getElementById('nameInput').value = "";
-                nameModal.classList.remove('hidden');
-                return;
-            }
-            saveSession();
-        }
-
         function saveSession() {
             const session = {
                 label: state.label,
@@ -433,7 +496,7 @@
 
         function showToast(msg) {
             const toast = document.createElement('div');
-            toast.className = 'fixed bottom-12 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-2 rounded-full font-medium shadow-lg z-[100]';
+            toast.className = 'fixed bottom-12 left-1/2 -translate-x-1/2 bg-primary text-slate-950 px-6 py-2 rounded-full font-bold shadow-lg z-[100] transition-colors duration-500';
             toast.innerText = msg;
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 2500);
@@ -451,23 +514,23 @@
                 
                 if (state.isEditingPresets) {
                     editBtn.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i>';
-                    editBtn.classList.add('bg-emerald-500', 'text-slate-950');
+                    editBtn.classList.add('bg-primary', 'text-slate-950');
                     editBtn.classList.remove('bg-white/5', 'text-slate-400');
                 } else {
                     editBtn.innerHTML = '<i data-lucide="settings-2" class="w-5 h-5"></i>';
-                    editBtn.classList.remove('bg-emerald-500', 'text-slate-950');
+                    editBtn.classList.remove('bg-primary', 'text-slate-950');
                     editBtn.classList.add('bg-white/5', 'text-slate-400');
                 }
 
                 if (!state.isEditingPresets) {
                     const customBtn = document.createElement('button');
-                    customBtn.className = 'w-full text-left p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex justify-between items-center mb-4';
-                    customBtn.innerHTML = `<div><div class="font-bold text-emerald-400">Custom Tasbeeh</div><div class="text-xs text-emerald-400/60">One-time name & target</div></div><i data-lucide="plus" class="w-4 h-4 text-emerald-400"></i>`;
+                    customBtn.className = 'w-full text-left p-4 bg-primary-fade border border-primary-fade rounded-xl flex justify-between items-center mb-4';
+                    customBtn.innerHTML = `<div><div class="font-bold text-primary">Custom Tasbeeh</div><div class="text-xs text-primary/60">One-time session</div></div><i data-lucide="plus" class="w-4 h-4 text-primary"></i>`;
                     customBtn.onclick = () => { mainModal.classList.add('hidden'); openEditTasbeeh('custom'); };
                     content.appendChild(customBtn);
                 } else {
                     const addBtn = document.createElement('button');
-                    addBtn.className = 'w-full text-center p-3 border border-dashed border-emerald-500/40 text-emerald-400 rounded-xl mb-4 text-xs font-bold hover:bg-emerald-500/5 transition-colors';
+                    addBtn.className = 'w-full text-center p-3 border border-dashed border-primary-fade text-primary rounded-xl mb-4 text-xs font-bold hover:bg-primary-fade transition-colors';
                     addBtn.innerText = "+ Add New Preset";
                     addBtn.onclick = () => { mainModal.classList.add('hidden'); openEditTasbeeh('preset'); };
                     content.appendChild(addBtn);
@@ -511,6 +574,27 @@
 
                     content.appendChild(btn);
                 });
+            } else if (type === 'theme') {
+                document.getElementById('modalTitle').innerText = "Color Theme";
+                editBtn.classList.add('hidden');
+                
+                THEMES.forEach(t => {
+                    const btn = document.createElement('button');
+                    const isActive = state.currentTheme === t.id;
+                    btn.className = `w-full p-4 glass rounded-xl flex items-center justify-between mb-2 ${isActive ? 'border-primary border-2' : ''}`;
+                    btn.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <div class="w-6 h-6 rounded-full ${t.class} bg-primary"></div>
+                            <span class="font-bold">${t.label}</span>
+                        </div>
+                        ${isActive ? '<i data-lucide="check" class="w-4 h-4 text-primary"></i>' : ''}
+                    `;
+                    btn.onclick = () => {
+                        applyTheme(t.id);
+                        openModal('theme');
+                    };
+                    content.appendChild(btn);
+                });
             } else {
                 document.getElementById('modalTitle').innerText = "History";
                 editBtn.classList.add('hidden');
@@ -524,13 +608,13 @@
                             <div class="flex justify-between items-center">
                                 <div>
                                     <div class="font-bold text-sm">${h.label}</div>
-                                    <div class="text-[10px] text-emerald-400 font-bold uppercase tracking-wide">${h.userName || 'Guest'}</div>
+                                    <div class="text-[10px] text-primary font-bold uppercase tracking-wide">${h.userName || 'Guest'}</div>
                                     <div class="text-[10px] text-slate-500">${h.date}</div>
                                 </div>
-                                <div class="text-xl font-black text-emerald-400">${h.count}</div>
+                                <div class="text-xl font-black text-primary">${h.count}</div>
                             </div>
                             <div class="flex gap-2">
-                                <button onclick="resumeItem(${h.id})" class="flex-grow bg-emerald-600/20 text-emerald-400 py-2 rounded-lg text-xs font-bold">Continue</button>
+                                <button onclick="resumeItem(${h.id})" class="flex-grow bg-primary-fade text-primary py-2 rounded-lg text-xs font-bold">Continue</button>
                                 <button onclick="deleteItem(${h.id})" class="px-3 bg-red-500/10 text-red-400 py-2 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                             </div>
                         `;
@@ -620,17 +704,19 @@
             nameModal.classList.remove('hidden');
         };
 
-        labelContainer.onclick = (e) => {
-            e.stopPropagation();
-            openEditTasbeeh('custom');
+        labelContainer.onclick = (e) => { e.stopPropagation(); openEditTasbeeh('custom'); };
+        document.getElementById('finishBtn').onclick = () => {
+            if (state.count === 0) return;
+            if (!state.userName) {
+                document.getElementById('nameInput').value = "";
+                nameModal.classList.remove('hidden');
+                return;
+            }
+            saveSession();
         };
-
-        document.getElementById('finishBtn').onclick = startSaveFlow;
-        document.getElementById('presetBtn').onclick = () => {
-            state.isEditingPresets = false;
-            openModal('presets');
-        };
+        document.getElementById('presetBtn').onclick = () => { state.isEditingPresets = false; openModal('presets'); };
         document.getElementById('historyBtn').onclick = () => openModal('history');
+        document.getElementById('themeBtn').onclick = () => openModal('theme');
         document.getElementById('closeModal').onclick = () => mainModal.classList.add('hidden');
         document.getElementById('confirmCancel').onclick = () => confirmModal.classList.add('hidden');
         
