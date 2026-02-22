@@ -198,9 +198,8 @@
         </div>
 
         <div class="text-center z-10 pointer-events-none flex flex-col items-center gap-2">
-            <div id="labelContainer" class="pointer-events-auto cursor-pointer group flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/5 hover:border-primary-fade transition-all">
+            <div id="labelContainer" class="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/5 transition-all">
                 <span id="labelDisplay" class="text-primary text-sm font-semibold tracking-widest uppercase block transition-colors duration-500">Ya Allah</span>
-                <i data-lucide="pencil" class="w-3 h-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity"></i>
             </div>
             
             <h2 id="counterDisplay" class="text-8xl md:text-9xl font-extrabold counter-glow leading-none transition-all duration-500">0</h2>
@@ -301,7 +300,10 @@
                 <label class="text-[10px] text-slate-500 uppercase tracking-widest block mb-2 text-center">Set Target</label>
                 <input type="number" id="tasbeehTargetInput" placeholder="1000" class="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-primary outline-none transition-all text-center">
             </div>
-            <button id="saveTasbeehBtn" class="w-full bg-primary hover:opacity-90 text-slate-950 font-bold py-4 rounded-xl transition-all">Update Counter</button>
+            <div class="flex gap-2">
+                <button id="cancelTasbeehBtn" class="flex-1 bg-white/5 hover:bg-white/10 text-white font-medium py-4 rounded-xl transition-all">Cancel</button>
+                <button id="saveTasbeehBtn" class="flex-1 bg-primary hover:opacity-90 text-slate-950 font-bold py-4 rounded-xl transition-all">Update</button>
+            </div>
         </div>
     </div>
 
@@ -311,7 +313,10 @@
             <h3 class="text-xl font-bold text-center mb-2 text-primary">Tasbeeh Tag</h3>
             <p class="text-slate-400 text-xs text-center mb-4">Enter the person's name.</p>
             <input type="text" id="nameInput" placeholder="Enter name" class="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-primary outline-none transition-all text-center mb-4">
-            <button id="saveNameBtn" class="w-full bg-primary hover:opacity-90 text-slate-950 font-bold py-3 rounded-xl transition-all">Save & Finish</button>
+            <div class="flex gap-2">
+                <button id="cancelNameBtn" class="flex-1 bg-white/5 hover:bg-white/10 text-white font-medium py-3 rounded-xl transition-all text-sm">Cancel</button>
+                <button id="saveNameBtn" class="flex-1 bg-primary hover:opacity-90 text-slate-950 font-bold py-3 rounded-xl transition-all">Save & Finish</button>
+            </div>
         </div>
     </div>
 
@@ -322,7 +327,7 @@
             <p id="confirmText" class="text-slate-400 text-xs mb-4">This action cannot be undone.</p>
             <div class="flex gap-2">
                 <button id="confirmCancel" class="flex-1 bg-white/5 hover:bg-white/10 py-2 rounded-xl transition-all text-white font-medium text-sm">Cancel</button>
-                <button id="confirmAction" class="flex-1 bg-red-600 hover:bg-red-500 py-2 rounded-xl transition-all text-white font-bold text-sm">Reset</button>
+                <button id="confirmAction" class="flex-1 bg-red-600 hover:bg-red-500 py-2 rounded-xl transition-all text-white font-bold text-sm">Confirm</button>
             </div>
         </div>
     </div>
@@ -388,12 +393,14 @@
             label: "Ya Allah",
             userName: "", 
             history: [],
+            archive: [],
             presets: [...DEFAULT_PRESETS],
             currentTheme: 'emerald',
             isEditingPresets: false,
             tutorialStep: 0,
             tutorialCompleted: false,
-            selectedHistoryIds: []
+            selectedHistoryIds: [],
+            vibrationEnabled: true
         };
 
         // UI Helpers
@@ -428,9 +435,11 @@
                 userName: state.userName,
                 presets: state.presets,
                 currentTheme: state.currentTheme,
-                tutorialCompleted: state.tutorialCompleted
+                tutorialCompleted: state.tutorialCompleted,
+                vibrationEnabled: state.vibrationEnabled
             }));
             localStorage.setItem('tasbeeh_history', JSON.stringify(state.history));
+            localStorage.setItem('tasbeeh_archive', JSON.stringify(state.archive));
         }
 
         function applyTheme(themeId) {
@@ -444,6 +453,7 @@
         function loadData() {
             const savedState = localStorage.getItem('tasbeeh_state_v5');
             const savedHistory = localStorage.getItem('tasbeeh_history');
+            const savedArchive = localStorage.getItem('tasbeeh_archive');
             
             if (savedState) {
                 const parsed = JSON.parse(savedState);
@@ -455,11 +465,16 @@
                 state.presets = parsed.presets || [...DEFAULT_PRESETS];
                 state.currentTheme = parsed.currentTheme || 'emerald';
                 state.tutorialCompleted = parsed.tutorialCompleted || false;
+                state.vibrationEnabled = parsed.vibrationEnabled !== undefined ? parsed.vibrationEnabled : true;
                 applyTheme(state.currentTheme);
             }
 
             if (savedHistory) {
                 state.history = JSON.parse(savedHistory);
+            }
+
+            if (savedArchive) {
+                state.archive = JSON.parse(savedArchive);
             }
 
             if (!state.tutorialCompleted) {
@@ -484,7 +499,7 @@
         }
 
         function triggerHaptic() {
-            if (navigator.vibrate) navigator.vibrate(50);
+            if (state.vibrationEnabled && navigator.vibrate) navigator.vibrate(50);
             flash.style.opacity = '1';
             setTimeout(() => flash.style.opacity = '0', 80);
         }
@@ -504,13 +519,17 @@
             state.count++;
             
             // FIREWORKS TRIGGER: On milestone interval OR reaching target
-            if (state.count % state.milestone === 0 || state.count === state.target) {
+            if (state.milestone > 0 && (state.count % state.milestone === 0 || state.count === state.target)) {
                 triggerFireworks();
                 triggerHaptic();
-            } else if(navigator.vibrate) {
+            } else if (state.vibrationEnabled && navigator.vibrate) {
                 navigator.vibrate(40);
             }
 
+            if (state.vibrationEnabled && navigator.vibrate) {
+                navigator.vibrate(40);
+            }
+            
             flash.style.opacity = '1';
             setTimeout(() => flash.style.opacity = '0', 80);
             
@@ -596,9 +615,7 @@
                 id: Date.now()
             };
             state.history.unshift(session);
-            state.count = 0;
             state.userName = ""; 
-            updateUI();
             saveData();
             showToast(`Saved for ${session.userName}`);
         }
@@ -686,6 +703,25 @@
                 `;
                 content.appendChild(milestoneDiv);
 
+                // Vibration Toggle
+                const vibrationDiv = document.createElement('div');
+                vibrationDiv.className = 'mb-6 p-4 glass rounded-2xl border-primary-fade border';
+                vibrationDiv.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="flex items-center gap-2 text-primary font-bold text-sm">
+                                <i data-lucide="vibrate" class="w-4 h-4"></i> Vibration
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-1">Haptic feedback on count</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" class="sr-only peer" id="vibrationToggle" ${state.vibrationEnabled ? 'checked' : ''}>
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        </label>
+                    </div>
+                `;
+                content.appendChild(vibrationDiv);
+
                 // Theme Section
                 const themeTitle = document.createElement('div');
                 themeTitle.className = 'px-1 text-[10px] text-slate-500 uppercase tracking-widest mb-3';
@@ -703,11 +739,11 @@
                         </div>
                         ${isActive ? '<i data-lucide="check" class="w-4 h-4 text-primary"></i>' : ''}
                     `;
-                    btn.onclick = () => { applyTheme(t.id); openModal('settings'); };
+                    btn.onclick = () => { applyTheme(t.id); };
                     content.appendChild(btn);
                 });
 
-                // Attach Milestone logic
+                // Attach event listeners
                 setTimeout(() => {
                     document.getElementById('saveMilestone').onclick = () => {
                         const val = parseInt(document.getElementById('milestoneInput').value);
@@ -717,10 +753,30 @@
                             showToast(`Milestone updated to ${val}`);
                         }
                     };
+                    
+                    document.getElementById('vibrationToggle').onchange = (e) => {
+                        state.vibrationEnabled = e.target.checked;
+                        saveData();
+                        showToast(state.vibrationEnabled ? 'Vibration enabled' : 'Vibration disabled');
+                    };
                 }, 0);
-            } else {
+            } else if (type === 'history') {
                 document.getElementById('modalTitle').innerText = "History";
                 editBtn.classList.add('hidden');
+                
+                // Remove any existing tab buttons
+                const existingTabs = document.querySelector('.history-archive-tabs');
+                if (existingTabs) existingTabs.remove();
+                
+                // Add archive tab button
+                const archiveBtn = document.createElement('div');
+                archiveBtn.className = 'history-archive-tabs flex gap-2 mb-4';
+                archiveBtn.innerHTML = `
+                    <button id="historyTabBtn" class="flex-1 py-2 px-4 rounded-lg font-bold text-sm bg-primary text-slate-950">Active</button>
+                    <button id="archiveTabBtn" class="flex-1 py-2 px-4 rounded-lg font-bold text-sm bg-white/5 text-white hover:bg-white/10 transition-colors">Archive (${state.archive.length})</button>
+                `;
+                content.parentElement.insertBefore(archiveBtn, content);
+                
                 if (state.history.length === 0) {
                     content.innerHTML = '<p class="text-center text-slate-500 py-8 text-sm">No saved sessions.</p>';
                 } else {
@@ -743,7 +799,7 @@
                             <div class="flex gap-2">
                                 <button onclick="resumeItem(${h.id})" class="flex-grow bg-primary-fade text-primary py-2 rounded-lg text-xs font-bold">Continue</button>
                                 <button onclick="shareHistoryItem(${h.id})" class="px-3 bg-green-500/10 text-green-400 py-2 rounded-lg hover:bg-green-500/20 transition-colors" title="Share to WhatsApp"><i data-lucide="share-2" class="w-4 h-4"></i></button>
-                                <button onclick="deleteItem(${h.id})" class="px-3 bg-red-500/10 text-red-400 py-2 rounded-lg hover:bg-red-500/20 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                <button onclick="deleteHistoryItem(${h.id})" class="px-3 bg-red-500/10 text-red-400 py-2 rounded-lg hover:bg-red-500/20 transition-colors" title="Delete"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                             </div>
                         `;
                         content.appendChild(div);
@@ -756,9 +812,9 @@
                         consolidateDiv.innerHTML = `
                             <button id="consolidateBtn" class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-3 rounded-xl transition-all text-sm flex items-center justify-center gap-2">
                                 <i data-lucide="layers-2" class="w-4 h-4"></i>
-                                Consolidate & Share
+                                Consolidate & Share All
                             </button>
-                            <p class="text-[10px] text-slate-500 text-center mt-2">Select items to consolidate by tasbeeh type</p>
+                            <p class="text-[10px] text-slate-500 text-center mt-2">Automatically consolidates all active sessions</p>
                         `;
                         content.appendChild(consolidateDiv);
                         
@@ -776,15 +832,70 @@
                             });
                             
                             document.getElementById('consolidateBtn').onclick = () => {
-                                if (state.selectedHistoryIds.length === 0) {
-                                    showToast('Select items to consolidate');
-                                    return;
-                                }
+                                // Auto-select all items
+                                state.selectedHistoryIds = state.history.map(h => h.id);
                                 consolidateAndShare();
                             };
                         }, 0);
                     }
                 }
+                
+                // Tab buttons setup - ALWAYS attach these
+                setTimeout(() => {
+                    const histTabBtn = document.getElementById('historyTabBtn');
+                    const archTabBtn = document.getElementById('archiveTabBtn');
+                    if (histTabBtn) histTabBtn.onclick = () => openModal('history');
+                    if (archTabBtn) archTabBtn.onclick = () => openModal('archive');
+                }, 0);
+            } else if (type === 'archive') {
+                document.getElementById('modalTitle').innerText = "Archived Sessions";
+                editBtn.classList.add('hidden');
+                
+                // Remove any existing tab buttons
+                const existingTabs = document.querySelector('.history-archive-tabs');
+                if (existingTabs) existingTabs.remove();
+                
+                // Add archive tab button
+                const archiveBtn = document.createElement('div');
+                archiveBtn.className = 'history-archive-tabs flex gap-2 mb-4';
+                archiveBtn.innerHTML = `
+                    <button id="historyTabBtn" class="flex-1 py-2 px-4 rounded-lg font-bold text-sm bg-white/5 text-white hover:bg-white/10 transition-colors">Active (${state.history.length})</button>
+                    <button id="archiveTabBtn" class="flex-1 py-2 px-4 rounded-lg font-bold text-sm bg-primary text-slate-950">Archive</button>
+                `;
+                content.parentElement.insertBefore(archiveBtn, content);
+                
+                if (state.archive.length === 0) {
+                    content.innerHTML = '<p class="text-center text-slate-500 py-8 text-sm">No archived sessions.</p>';
+                } else {
+                    state.archive.forEach(h => {
+                        const div = document.createElement('div');
+                        div.className = 'p-4 glass rounded-xl mb-2 flex flex-col gap-2';
+                        div.innerHTML = `
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <div class="font-bold text-sm">${h.label}</div>
+                                    <div class="text-[10px] text-primary font-bold uppercase tracking-wide">${h.userName || 'Guest'}</div>
+                                    <div class="text-[10px] text-slate-500">${h.date}</div>
+                                </div>
+                                <div class="text-xl font-black text-primary">${h.count}</div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="restoreArchived(${h.id})" class="flex-grow bg-green-500/10 text-green-400 py-2 rounded-lg text-xs font-bold hover:bg-green-500/20 transition-colors">Restore</button>
+                                <button onclick="shareHistoryItem(${h.id}, true)" class="px-3 bg-blue-500/10 text-blue-400 py-2 rounded-lg hover:bg-blue-500/20 transition-colors" title="Share to WhatsApp"><i data-lucide="share-2" class="w-4 h-4"></i></button>
+                                <button onclick="deletePermanently(${h.id})" class="px-3 bg-red-500/10 text-red-400 py-2 rounded-lg hover:bg-red-500/20 transition-colors" title="Permanently Delete"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                        `;
+                        content.appendChild(div);
+                    });
+                }
+                
+                // Tab buttons setup
+                setTimeout(() => {
+                    const histTabBtn = document.getElementById('historyTabBtn');
+                    const archTabBtn = document.getElementById('archiveTabBtn');
+                    if (histTabBtn) histTabBtn.onclick = () => openModal('history');
+                    if (archTabBtn) archTabBtn.onclick = () => openModal('archive');
+                }, 0);
             }
             lucide.createIcons();
         }
@@ -807,7 +918,38 @@
             }
         };
 
-        window.deleteItem = (id) => { state.history = state.history.filter(h => h.id !== id); saveData(); openModal('history'); };
+        window.deleteHistoryItem = (id) => {
+            openConfirm("Archive Session?", "Move this session to archive?", "Archive", () => {
+                const item = state.history.find(h => h.id === id);
+                if (item) {
+                    state.archive.unshift(item);
+                    state.history = state.history.filter(h => h.id !== id);
+                    saveData();
+                    openModal('history');
+                    showToast('Session archived');
+                }
+            });
+        };
+
+        window.restoreArchived = (id) => {
+            const item = state.archive.find(h => h.id === id);
+            if (item) {
+                state.history.unshift(item);
+                state.archive = state.archive.filter(h => h.id !== id);
+                saveData();
+                openModal('history');
+                showToast('Session restored');
+            }
+        };
+
+        window.deletePermanently = (id) => {
+            openConfirm("Permanently Delete?", "This cannot be undone.", "Delete", () => {
+                state.archive = state.archive.filter(h => h.id !== id);
+                saveData();
+                openModal('archive');
+                showToast('Permanently deleted');
+            });
+        };
 
         function shareToWhatsApp(label, count, target, userName) {
             const progress = Math.round((count / target) * 100);
@@ -816,8 +958,9 @@
             window.open(url, '_blank');
         }
 
-        window.shareHistoryItem = (id) => {
-            const item = state.history.find(h => h.id === id);
+        window.shareHistoryItem = (id, fromArchive = false) => {
+            const list = fromArchive ? state.archive : state.history;
+            const item = list.find(h => h.id === id);
             if (item) shareToWhatsApp(item.label, item.count, item.target, item.userName);
         };
 
@@ -863,6 +1006,8 @@
             updateUI(); saveData();
             if (state.count > 0) saveSession();
         };
+        
+        document.getElementById('cancelNameBtn').onclick = () => nameModal.classList.add('hidden');
 
         document.getElementById('saveTasbeehBtn').onclick = () => {
             const nameIn = document.getElementById('tasbeehNameInput');
@@ -871,16 +1016,17 @@
             const target = parseInt(targetIn.value) || 1000;
 
             if (editMode === 'custom') {
-                state.label = label; state.target = target; state.count = 0; state.userName = ""; updateUI();
+                state.label = label; state.target = target; state.userName = ""; updateUI();
             } else {
                 state.presets.push({ label, target });
                 setTimeout(() => openModal('presets'), 100);
             }
             editTasbeehModal.classList.add('hidden');
             saveData();
-        };
-
-        document.getElementById('editPresetsBtn').onclick = () => {
+        };        
+        document.getElementById('cancelTasbeehBtn').onclick = () => editTasbeehModal.classList.add('hidden');
+        document.getElementById('editPresetsBtn').onclick = (e) => {
+            e.stopPropagation();
             state.isEditingPresets = !state.isEditingPresets;
             openModal('presets');
         };
@@ -888,13 +1034,13 @@
         document.getElementById('resetBtn').onclick = (e) => {
             e.stopPropagation();
             openConfirm("Reset Counter?", "Clear current progress?", "Reset", () => {
-                state.count = 0; state.userName = ""; updateUI(); saveData();
+                state.count = 0; updateUI(); saveData();
             });
         };
 
         userBadge.onclick = () => { document.getElementById('nameInput').value = state.userName; nameModal.classList.remove('hidden'); };
-        labelContainer.onclick = (e) => { e.stopPropagation(); openEditTasbeeh('custom'); };
-        document.getElementById('finishBtn').onclick = () => {
+        document.getElementById('finishBtn').onclick = (e) => {
+            e.stopPropagation();
             if (state.count === 0) return;
             if (!state.userName) { document.getElementById('nameInput').value = ""; nameModal.classList.remove('hidden'); return; }
             saveSession();
@@ -910,6 +1056,17 @@
         loadData();
         updateUI();
         lucide.createIcons();
+        
+        // Handle Enter key in modals
+        document.getElementById('tasbeehNameInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('saveTasbeehBtn').click();
+        });
+        document.getElementById('tasbeehTargetInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('saveTasbeehBtn').click();
+        });
+        document.getElementById('nameInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('saveNameBtn').click();
+        });
     </script>
 </body>
 </html>
