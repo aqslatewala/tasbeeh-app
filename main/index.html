@@ -400,6 +400,7 @@
             tutorialStep: 0,
             tutorialCompleted: false,
             selectedHistoryIds: [],
+            currentHistoryId: null,
             vibrationEnabled: true
         };
 
@@ -606,6 +607,29 @@
         }
 
         function saveSession() {
+            // If resuming an existing history item, update it instead of creating a new one
+            if (state.currentHistoryId) {
+                const idx = state.history.findIndex(h => h.id === state.currentHistoryId);
+                if (idx !== -1) {
+                    const item = state.history[idx];
+                    item.label = state.label;
+                    item.count = state.count;
+                    item.target = state.target;
+                    item.userName = state.userName || item.userName || 'Guest';
+                    item.date = new Date().toLocaleString();
+                    // Move updated item to the front
+                    state.history.splice(idx, 1);
+                    state.history.unshift(item);
+                    saveData();
+                    showToast(`Updated for ${item.userName}`);
+                    return false; // updated existing
+                } else {
+                    // If referenced id not found, clear and fallthrough to create new
+                    state.currentHistoryId = null;
+                }
+            }
+
+            // Create a new session
             const session = {
                 label: state.label,
                 count: state.count,
@@ -618,6 +642,7 @@
             state.userName = ""; 
             saveData();
             showToast(`Saved for ${session.userName}`);
+            return true; // created new
         }
 
         function showToast(msg) {
@@ -670,6 +695,8 @@
                     inner.innerHTML = `<div><div class="font-bold">${p.label}</div><div class="text-xs text-slate-400">Target: ${p.target}</div></div>`;
                     if (!state.isEditingPresets) {
                         inner.onclick = () => {
+                            // Switching presets is a fresh session — do not auto-save previous session.
+                            state.currentHistoryId = null;
                             state.label = p.label; state.target = p.target; state.count = 0; state.userName = ""; 
                             updateUI(); saveData(); mainModal.classList.add('hidden');
                         };
@@ -912,8 +939,12 @@
         window.resumeItem = (id) => {
             const item = state.history.find(h => h.id === id);
             if (item) {
-                state.label = item.label; state.count = item.count; state.target = item.target; state.userName = item.userName || ""; 
-                state.history = state.history.filter(h => h.id !== id);
+                // Mark this session as the active resumed session so save updates it
+                state.currentHistoryId = id;
+                state.label = item.label;
+                state.count = item.count;
+                state.target = item.target;
+                state.userName = item.userName || "";
                 updateUI(); saveData(); mainModal.classList.add('hidden');
             }
         };
@@ -924,6 +955,8 @@
                 if (item) {
                     state.archive.unshift(item);
                     state.history = state.history.filter(h => h.id !== id);
+                    // If the archived item was the one currently being continued, clear the marker
+                    if (state.currentHistoryId === id) state.currentHistoryId = null;
                     saveData();
                     openModal('history');
                     showToast('Session archived');
@@ -1004,7 +1037,15 @@
             state.userName = name;
             nameModal.classList.add('hidden');
             updateUI(); saveData();
-            if (state.count > 0) saveSession();
+            if (state.count > 0) {
+                const created = saveSession();
+                // If a new history item was created (first-time save), reset the counter
+                if (created) {
+                    state.count = 0;
+                    state.currentHistoryId = null;
+                    updateUI(); saveData();
+                }
+            }
         };
         
         document.getElementById('cancelNameBtn').onclick = () => nameModal.classList.add('hidden');
@@ -1016,6 +1057,8 @@
             const target = parseInt(targetIn.value) || 1000;
 
             if (editMode === 'custom') {
+                // New custom session — treat as fresh (not resuming)
+                state.currentHistoryId = null;
                 state.label = label; state.target = target; state.userName = ""; updateUI();
             } else {
                 state.presets.push({ label, target });
@@ -1034,6 +1077,8 @@
         document.getElementById('resetBtn').onclick = (e) => {
             e.stopPropagation();
             openConfirm("Reset Counter?", "Clear current progress?", "Reset", () => {
+                // Do not auto-save on reset. Clear any resumed session marker.
+                state.currentHistoryId = null;
                 state.count = 0; updateUI(); saveData();
             });
         };
@@ -1043,7 +1088,12 @@
             e.stopPropagation();
             if (state.count === 0) return;
             if (!state.userName) { document.getElementById('nameInput').value = ""; nameModal.classList.remove('hidden'); return; }
-            saveSession();
+            const created = saveSession();
+            if (created) {
+                state.count = 0;
+                state.currentHistoryId = null;
+                updateUI(); saveData();
+            }
         };
         document.getElementById('presetBtn').onclick = () => { state.isEditingPresets = false; openModal('presets'); };
         document.getElementById('historyBtn').onclick = () => openModal('history');
